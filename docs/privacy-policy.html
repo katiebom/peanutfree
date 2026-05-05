@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>개인정보처리방침 | 땅콩프리 (PeanutFree)</title>
+  <style>
+    :root {
+      --primary: #E8704A;
+      --bg: #FAF8F5;
+      --card: #ffffff;
+      --border: #F0EDE8;
+      --text: #222222;
+      --sub: #666666;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      font-size: 15px;
+    }
+    header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header .logo { font-size: 28px; }
+    header .title { font-size: 18px; font-weight: 900; color: var(--text); }
+    header .sub { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+    .lang-toggle {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+    }
+    .lang-btn {
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .lang-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .container { max-width: 760px; margin: 0 auto; padding: 32px 24px 80px; }
+
+    .effective-date {
+      background: #FFF3EE;
+      border-left: 3px solid var(--primary);
+      padding: 10px 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 32px;
+    }
+
+    h1 { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
+    .intro { color: var(--sub); font-size: 14px; margin-bottom: 32px; }
+
+    .section {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .section h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section p { margin-bottom: 10px; color: #444; font-size: 14px; }
+    .section p:last-child { margin-bottom: 0; }
+    .section ul { padding-left: 20px; margin-bottom: 10px; }
+    .section ul li { font-size: 14px; color: #444; margin-bottom: 6px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    th {
+      background: #FFF3EE;
+      color: var(--primary);
+      font-weight: 700;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    .contact-card {
+      background: #FFF3EE;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .contact-card strong { display: block; font-weight: 800; margin-bottom: 4px; }
+
+    footer {
+      text-align: center;
+      color: var(--sub);
+      font-size: 12px;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* English section hidden by default */
+    .lang-en { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🥜</span>
+  <div>
+    <div class="title">땅콩프리 (PeanutFree)</div>
+    <div class="sub">개인정보처리방침 · Privacy Policy</div>
+  </div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('ko')">🇰🇷 한국어</button>
+    <button class="lang-btn" onclick="setLang('en')">🇺🇸 English</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ====== 한국어 ====== -->
+  <div class="lang-ko">
+    <div class="effective-date">📅 시행일: 2025년 5월 1일 &nbsp;|&nbsp; 최종 수정: 2025년 5월 1일</div>
+
+    <h1>개인정보처리방침</h1>
+    <p class="intro">
+      땅콩프리(이하 "앱")는 이용자의 개인정보를 소중히 여기며, 「개인정보 보호법」 및 관련 법령을 준수합니다.
+      본 방침은 앱이 수집하는 정보, 이용 목적, 보관 기간 및 이용자의 권리를 설명합니다.
+    </p>
+
+    <div class="section">
+      <h2>1️⃣ 수집하는 개인정보 항목</h2>
+      <table>
+        <tr>
+          <th>항목</th>
+          <th>수집 시점</th>
+          <th>목적</th>
+        </tr>
+        <tr>
+          <td><strong>이메일 주소</strong></td>
+          <td>회원가입 시</td>
+          <td>계정 생성, 인증, 서비스 공지</td>
+        </tr>
+        <tr>
+          <td><strong>닉네임</strong></td>
+          <td>프로필 설정 시</td>
+          <td>커뮤니티 활동 식별</td>
+        </tr>
+        <tr>
+          <td><strong>위치 정보</strong></td>
+          <td>지도·주변 검색 기능 사용 시</td>
+          <td>주변 안전 식당 검색 (앱 사용 중에만 수집)</td>
+        </tr>
+        <tr>
+          <td><strong>카메라</strong></td>
+          <td>바코드 스캔 시</td>
+          <td>식품 성분 조회 (촬영 이미지는 저장·전송하지 않음)</td>
+        </tr>
+        <tr>
+          <td><strong>사용자 제보 내용</strong></td>
+          <td>식당·식품 제보 시</td>
+          <td>안전 정보 데이터베이스 구축</td>
+        </tr>
+        <tr>
+          <td><strong>기기 식별 정보</strong></td>
+          <td>앱 실행 시 (자동)</td>
+          <td>오류 분석 및 앱 안정성 개선</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>2️⃣ 수집 방법</h2>
+      <ul>
+        <li>회원가입 및 로그인 화면에서 직접 입력</li>
+        <li>기기 권한 동의 후 자동 수집 (위치, 카메라)</li>
+        <li>Firebase Authentication·Firestore를 통한 처리</li>
+        <li>앱 내 제보 기능을 통한 사용자 직접 입력</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>3️⃣ 개인정보 이용 목적</h2>
+      <ul>
+        <li>회원 계정 생성, 인증 및 유지</li>
+        <li>땅콩·견과류 알레르기 안전 식당·식품 정보 제공</li>
+        <li>주변 안전 식당 지도 서비스 제공</li>
+        <li>커뮤니티 게시판 운영 (닉네임 표시)</li>
+        <li>사용자 제보 관리 및 데이터 품질 유지</li>
+        <li>앱 오류 분석 및 서비스 개선</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>4️⃣ 개인정보 보관 및 파기</h2>
+      <table>
+        <tr>
+          <th>항목</th>
+          <th>보관 기간</th>
+        </tr>
+        <tr>
+          <td>이메일, 닉네임</td>
+          <td>회원 탈퇴 시 즉시 삭제 (단, 관련 법령에 따라 일부 보관 가능)</td>
+        </tr>
+        <tr>
+          <td>위치 정보</td>
+          <td>수집 즉시 검색에만 활용, 서버에 저장하지 않음</td>
+        </tr>
+        <tr>
+          <td>카메라 촬영 이미지</td>
+          <td>수집하지 않음 (기기 내 처리 후 즉시 폐기)</td>
+        </tr>
+        <tr>
+          <td>사용자 제보 내용</td>
+          <td>서비스 운영 기간 동안 보관, 탈퇴 시 요청에 따라 삭제</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>5️⃣ 제3자 제공 및 위탁</h2>
+      <p>앱은 이용자의 개인정보를 <strong>제3자에게 판매하거나 제공하지 않습니다.</strong></p>
+      <p>다음의 외부 서비스에 처리를 위탁합니다:</p>
+      <table>
+        <tr>
+          <th>수탁사</th>
+          <th>위탁 내용</th>
+          <th>보관 국가</th>
+        </tr>
+        <tr>
+          <td>Google Firebase (Alphabet Inc.)</td>
+          <td>인증, 데이터베이스, 오류 분석</td>
+          <td>미국 (Google 데이터 센터)</td>
+        </tr>
+        <tr>
+          <td>Naver Cloud</td>
+          <td>장소 검색 API (검색어만 전송, 개인정보 미포함)</td>
+          <td>대한민국</td>
+        </tr>
+        <tr>
+          <td>Google Maps Platform</td>
+          <td>장소 검색 API (검색어만 전송)</td>
+          <td>미국</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>6️⃣ 이용자의 권리</h2>
+      <p>이용자는 언제든지 다음의 권리를 행사할 수 있습니다:</p>
+      <ul>
+        <li><strong>열람:</strong> 보유 개인정보 확인 요청</li>
+        <li><strong>정정:</strong> 부정확한 정보 수정 요청</li>
+        <li><strong>삭제·탈퇴:</strong> 앱 내 마이페이지 → 로그아웃 후 탈퇴 신청, 또는 아래 이메일로 요청</li>
+        <li><strong>처리 정지:</strong> 특정 정보 처리 중지 요청</li>
+      </ul>
+      <p>요청은 아래 개인정보 보호책임자에게 이메일로 연락 주시면 <strong>7영업일 내</strong> 처리합니다.</p>
+    </div>
+
+    <div class="section">
+      <h2>7️⃣ 어린이 개인정보 보호</h2>
+      <p>
+        본 앱은 <strong>만 14세 미만 아동</strong>의 개인정보를 의도적으로 수집하지 않습니다.
+        부모 또는 보호자가 자녀의 정보가 수집된 것을 확인하는 경우,
+        아래 연락처로 삭제를 요청하실 수 있습니다.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>8️⃣ 개인정보 보호책임자</h2>
+      <div class="contact-card">
+        <strong>🥜 땅콩프리 개인정보 보호책임자</strong>
+        이메일: <a href="mailto:peanutfreeapp@gmail.com">peanutfreeapp@gmail.com</a><br />
+        처리 기간: 요청 접수 후 7영업일 이내
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>9️⃣ 방침 변경 안내</h2>
+      <p>
+        본 방침이 변경될 경우, 앱 내 공지 및 본 페이지에 최소 <strong>7일 전</strong> 사전 고지합니다.
+        중요한 변경 사항은 이메일로도 안내합니다.
+      </p>
+    </div>
+  </div>
+  <!-- end 한국어 -->
+
+
+  <!-- ====== ENGLISH ====== -->
+  <div class="lang-en">
+    <div class="effective-date">📅 Effective Date: May 1, 2025 &nbsp;|&nbsp; Last Updated: May 1, 2025</div>
+
+    <h1>Privacy Policy</h1>
+    <p class="intro">
+      PeanutFree ("the App") is committed to protecting your privacy.
+      This policy explains what information we collect, how we use it, and your rights.
+    </p>
+
+    <div class="section">
+      <h2>1️⃣ Information We Collect</h2>
+      <table>
+        <tr>
+          <th>Data</th>
+          <th>When Collected</th>
+          <th>Purpose</th>
+        </tr>
+        <tr>
+          <td><strong>Email address</strong></td>
+          <td>During sign-up</td>
+          <td>Account creation, authentication, notifications</td>
+        </tr>
+        <tr>
+          <td><strong>Nickname</strong></td>
+          <td>Profile setup</td>
+          <td>Community identification</td>
+        </tr>
+        <tr>
+          <td><strong>Location</strong></td>
+          <td>When using map / nearby search</td>
+          <td>Find nearby safe restaurants (used only while app is in use)</td>
+        </tr>
+        <tr>
+          <td><strong>Camera</strong></td>
+          <td>During barcode scan</td>
+          <td>Look up food ingredients (images are NOT stored or transmitted)</td>
+        </tr>
+        <tr>
+          <td><strong>User-submitted reports</strong></td>
+          <td>When submitting restaurant or food info</td>
+          <td>Build safety database</td>
+        </tr>
+        <tr>
+          <td><strong>Device identifiers</strong></td>
+          <td>App launch (automatic)</td>
+          <td>Crash analytics and stability improvements</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>2️⃣ How We Collect Information</h2>
+      <ul>
+        <li>Directly from you during sign-up and profile setup</li>
+        <li>Automatically, after you grant device permissions (location, camera)</li>
+        <li>Via Firebase Authentication and Firestore</li>
+        <li>Through in-app report submission forms</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>3️⃣ How We Use Your Information</h2>
+      <ul>
+        <li>Create, authenticate, and maintain your account</li>
+        <li>Provide peanut/nut allergy safety information for restaurants and foods</li>
+        <li>Show nearby safe restaurants on the map</li>
+        <li>Operate community boards (nickname displayed)</li>
+        <li>Manage user-submitted reports and maintain data quality</li>
+        <li>Analyze crashes and improve the app</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>4️⃣ Data Retention & Deletion</h2>
+      <table>
+        <tr>
+          <th>Data</th>
+          <th>Retention Period</th>
+        </tr>
+        <tr>
+          <td>Email, nickname</td>
+          <td>Deleted upon account deletion (subject to applicable law)</td>
+        </tr>
+        <tr>
+          <td>Location data</td>
+          <td>Used instantly for search only — never stored on our servers</td>
+        </tr>
+        <tr>
+          <td>Camera images</td>
+          <td>Not collected — processed on-device and discarded immediately</td>
+        </tr>
+        <tr>
+          <td>User-submitted reports</td>
+          <td>Retained while service is active; deleted upon request after account deletion</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>5️⃣ Third-Party Services</h2>
+      <p>We do <strong>not sell or share</strong> your personal data with third parties for commercial purposes.</p>
+      <p>We use the following processors:</p>
+      <table>
+        <tr>
+          <th>Processor</th>
+          <th>Purpose</th>
+          <th>Location</th>
+        </tr>
+        <tr>
+          <td>Google Firebase (Alphabet Inc.)</td>
+          <td>Authentication, database, crash analytics</td>
+          <td>USA (Google data centers)</td>
+        </tr>
+        <tr>
+          <td>Naver Cloud</td>
+          <td>Place search API (search terms only, no personal data)</td>
+          <td>South Korea</td>
+        </tr>
+        <tr>
+          <td>Google Maps Platform</td>
+          <td>Place search API (search terms only)</td>
+          <td>USA</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>6️⃣ Your Rights</h2>
+      <p>You may at any time:</p>
+      <ul>
+        <li><strong>Access</strong> the personal data we hold about you</li>
+        <li><strong>Correct</strong> inaccurate information</li>
+        <li><strong>Delete</strong> your account (via My Page in-app, or by emailing us)</li>
+        <li><strong>Object</strong> to certain processing activities</li>
+      </ul>
+      <p>We will respond to requests within <strong>7 business days</strong>.</p>
+    </div>
+
+    <div class="section">
+      <h2>7️⃣ Children's Privacy</h2>
+      <p>
+        The App is not directed to children under 14 (or under 13 in the United States).
+        If you believe we have inadvertently collected information from a child,
+        please contact us at the email below and we will delete it promptly.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>8️⃣ Contact</h2>
+      <div class="contact-card">
+        <strong>🥜 PeanutFree Privacy Contact</strong>
+        Email: <a href="mailto:peanutfreeapp@gmail.com">peanutfreeapp@gmail.com</a><br />
+        Response time: within 7 business days
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>9️⃣ Changes to This Policy</h2>
+      <p>
+        We will notify you of material changes at least <strong>7 days</strong> in advance
+        via in-app notice and by updating this page.
+        Significant changes will also be communicated by email.
+      </p>
+    </div>
+  </div>
+  <!-- end English -->
+
+  <footer>
+    © 2025 땅콩프리 (PeanutFree) · 이 페이지는 Google Play 스토어 등록을 위한 공식 개인정보처리방침입니다.
+  </footer>
+</div>
+
+<script>
+  function setLang(lang) {
+    document.querySelector('.lang-ko').style.display = lang === 'ko' ? 'block' : 'none';
+    document.querySelector('.lang-en').style.display = lang === 'en' ? 'block' : 'none';
+    document.querySelectorAll('.lang-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.textContent.includes(lang === 'ko' ? '한국어' : 'English'));
+    });
+  }
+</script>
+
+</body>
+</html>
