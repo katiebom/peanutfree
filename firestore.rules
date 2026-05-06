@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 어드민 여부 확인
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // 로그인 여부 확인
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 사용자 프로필: 본인만 읽기/쓰기
+    match /users/{uid} {
+      allow read, write: if isAuth() && request.auth.uid == uid;
+    }
+
+    // 어드민 목록: 본인 문서만 읽기 (관리자 확인용), 클라이언트 쓰기 금지
+    match /admins/{uid} {
+      allow read: if isAuth() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // 식당 리뷰: 인증 사용자 읽기/생성, 어드민만 수정/삭제
+    match /reviews/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAdmin();
+    }
+
+    // 브랜드: 읽기 전체, 제보(생성), 좋아요(likes 필드만 수정), 어드민 전체
+    match /brands/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAdmin() ||
+        (isAuth() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow delete: if isAdmin();
+    }
+
+    // 식품: 읽기 전체, 제보(생성), 좋아요(likes 필드만 수정), 어드민 전체
+    match /foods/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAdmin() ||
+        (isAuth() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow delete: if isAdmin();
+    }
+
+    // 사용자 제보: 인증 사용자 생성/읽기, 본인 제보 삭제, 어드민 전체 관리
+    match /userReports/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isAuth() && resource.data.userId == request.auth.uid);
+    }
+
+    // 식당 DB: 인증 사용자 읽기, 생성 가능 (Google Places 추가 등)
+    match /restaurants/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAdmin();
+    }
+
+    // 초대 코드: 인증 사용자 읽기 전용 (검증용)
+    match /inviteCodes/{docId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+
+    // 초대 요청: 인증 사용자 생성, 어드민 읽기/수정
+    match /requests/{docId} {
+      allow create: if isAuth();
+      allow read, update: if isAdmin();
+      allow delete: if false;
+    }
+  }
+}
