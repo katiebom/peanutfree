@@ -1,0 +1,32 @@
+# EAS Build 업로드 제외 목록
+# ⚠️ 이 파일이 존재하면 EAS는 .gitignore 대신 이 파일만 봅니다.
+#    그래서 node_modules 를 여기에도 반드시 적어야 합니다.
+
+node_modules/
+.expo/
+.git/
+
+# 시크릿 — 앱 번들이 사용하지 않음 (로컬 스크립트 전용)
+# 빌드 시 키는 EAS 환경변수로 주입됨:
+#   GOOGLE_PLACES_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, NAVER_MAPS_CLIENT_ID
+serviceAccountKey.json
+.env
+.env.local
+
+# 로컬 전용 스크립트 (Firestore 시드/업로드) — 앱에서 import 안 함
+seedRestaurants.js
+seedData_full.js
+seedData_v2.js
+seedCafes.mjs
+uploadRestaurants.mjs
+updateGoogleRatings.mjs
+listRestaurants.mjs
+
+# 스토어 자산·문서·백업 — 빌드에 불필요
+docs/
+store-assets/
+_old/
+
+# 원본 데이터
+*.xlsx
+*.csv

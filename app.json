@@ -2,7 +2,7 @@
   "expo": {
     "name": "땅콩프리",
     "slug": "peanut-free",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FAF8F5"
+        "backgroundColor": "#FDF3E9"
       },
       "package": "com.xavierj.peanutfree",
       "permissions": [
@@ -35,7 +35,7 @@
       }
     },
     "owner": "xavier_j",
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.0.2",
     "updates": {
       "url": "https://u.expo.dev/ad6a24e5-e129-4262-82d7-c0b4d7a345d9"
     },
