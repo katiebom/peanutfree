@@ -15,16 +15,11 @@ import { GOOGLE_PLACES_KEY } from '../config/keys';
 import ReportModal from '../components/ReportModal';
 import QuickSafetyReport from '../components/QuickSafetyReport';
 
-// ── 음식 종류 고정 목록 ────────────────────────────────────
-export const CUISINE_TYPES = [
-  '한식', '중식', '일식', '양식', '이탈리안',
-  '멕시칸', '동남아시아', '인도', '중동', '카페', '기타',
-];
+import { CUISINE_EMOJI, CUISINE_TYPES, inferCuisine } from '../utils/inferCuisine';
 
-export const CUISINE_EMOJI = {
-  한식: '🍚', 중식: '🥢', 일식: '🍣', 양식: '🥩', 이탈리안: '🍝',
-  멕시칸: '🌮', 동남아시아: '🍜', 인도: '🍛', 중동: '🧆', 카페: '☕', 기타: '🍽️',
-};
+// ── 음식 종류 고정 목록 ────────────────────────────────────
+// 정의는 src/utils/inferCuisine.js. 기존 import 경로 호환을 위해 여기서 재수출한다.
+export { CUISINE_EMOJI, CUISINE_TYPES };
 
 async function searchPlaces(query) {
   if (!GOOGLE_PLACES_KEY || !query.trim()) return [];
@@ -235,7 +230,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
         branch: '',
         district: extractDistrictFromAddress(place.address),
         address: place.address,
-        cuisineType: '기타',
+        cuisineType: inferCuisine({ name: place.name, hints: place.types }),
         peanutRiskTier: 'unknown',
         allergyGuidanceLikelihood: '',
         whyFlagged: '',
@@ -654,8 +649,10 @@ function WriteReviewModal({ visible, onClose, lang, t, user }) {
   const [form, setForm] = useState({
     name: '', address: '', cat: '', risk: 'safe',
     review: '', rating: 5, author: '', lat: null, lng: null,
-    cuisineType: '기타',
+    cuisineType: inferCuisine({}),
   });
+  // 사용자가 음식 종류 칩을 직접 고르기 전까지는 카테고리/이름에서 자동 추론한다
+  const [cuisineTouched, setCuisineTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -663,16 +660,22 @@ function WriteReviewModal({ visible, onClose, lang, t, user }) {
   const debounceTimer = useRef(null);
 
   function reset() {
-    setForm({ name:'', address:'', cat:'', risk:'safe', review:'', rating:5, author:'', lat:null, lng:null, cuisineType:'기타' });
+    setForm({ name:'', address:'', cat:'', risk:'safe', review:'', rating:5, author:'', lat:null, lng:null, cuisineType: inferCuisine({}) });
+    setCuisineTouched(false);
     setSearchResults([]);
     setNameQuery('');
   }
 
   function handleClose() { reset(); onClose(); }
 
+  function withInferredCuisine(next, hint) {
+    if (cuisineTouched) return next;
+    return { ...next, cuisineType: inferCuisine({ cat: next.cat, name: next.name, hints: hint ? [hint] : [] }) };
+  }
+
   function handleNameChange(v) {
     setNameQuery(v);
-    setForm(f => ({ ...f, name: v, lat: null, lng: null, address: '' }));
+    setForm(f => withInferredCuisine({ ...f, name: v, lat: null, lng: null, address: '' }));
     setSearchResults([]);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     if (v.trim().length < 2) return;
@@ -690,14 +693,14 @@ function WriteReviewModal({ visible, onClose, lang, t, user }) {
 
   function handleSelectPlace(place) {
     setNameQuery(place.name);
-    setForm(f => ({
+    setForm(f => withInferredCuisine({
       ...f,
       name: place.name,
       address: place.address,
       cat: f.cat || (place.category ? place.category.split('>').pop().trim() : ''),
       lat: place.lat,
       lng: place.lng,
-    }));
+    }, place.category));
     setSearchResults([]);
   }
 
@@ -815,7 +818,7 @@ function WriteReviewModal({ visible, onClose, lang, t, user }) {
             <Text style={styles.fieldLabel}>{t.restCatLabel}</Text>
             <TextInput
               value={form.cat}
-              onChangeText={v => setForm(f => ({ ...f, cat: v }))}
+              onChangeText={v => setForm(f => withInferredCuisine({ ...f, cat: v }))}
               placeholder={t.restCatPh}
               placeholderTextColor="#CCC"
               style={styles.input}
@@ -832,7 +835,7 @@ function WriteReviewModal({ visible, onClose, lang, t, user }) {
                   return (
                     <TouchableOpacity
                       key={c}
-                      onPress={() => setForm(f => ({ ...f, cuisineType: c }))}
+                      onPress={() => { setCuisineTouched(true); setForm(f => ({ ...f, cuisineType: c })); }}
                       style={[styles.cuisinePickerBtn, active && styles.cuisinePickerBtnActive]}
                     >
                       <Text style={[styles.cuisinePickerText, active && styles.cuisinePickerTextActive]}>

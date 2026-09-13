@@ -5,11 +5,12 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import {
-  subscribeReviews, updateReview, deleteReview,
+  subscribeReviews, updateReview, deleteReview, addReviewFromAdmin,
   subscribePending, setModerationStatus, setModerationRisk,
   STATUS_APPROVED, STATUS_REJECTED,
 } from '../firebase/dbService';
-import { CUISINE_TYPES, CUISINE_EMOJI } from './RestaurantScreen';
+import { CUISINE_TYPES, CUISINE_EMOJI, inferCuisineForReview } from '../utils/inferCuisine';
+import { getCurrentUser } from '../firebase/authService';
 
 const RISK_COLOR = {
   safe: '#2D8A4E', caution: '#D9622F', danger: '#C13A2D', info: '#4A7FBF',
@@ -45,6 +46,7 @@ function CuisineEditModal({ item, visible, onClose, onSave }) {
         <View style={m.sheet}>
           <Text style={m.title}>{name}</Text>
           <Text style={m.subtitle}>음식 종류 선택</Text>
+          <ScrollView style={m.gridScroll} showsVerticalScrollIndicator={false}>
           <View style={m.grid}>
             {CUISINE_TYPES.map(c => {
               const active = selected === c;
@@ -60,6 +62,7 @@ function CuisineEditModal({ item, visible, onClose, onSave }) {
               );
             })}
           </View>
+          </ScrollView>
           <View style={m.btnRow}>
             <TouchableOpacity style={m.cancelBtn} onPress={onClose}>
               <Text style={m.cancelText}>취소</Text>
@@ -355,22 +358,28 @@ export default function AdminScreen({ onExit, t }) {
     );
   }
 
-  // cuisineType 없는 항목 일괄 '기타' 설정
+  // cuisineType 없는 항목 일괄 설정 — ko.cat / 이름에서 추론, 안 맞는 것만 '기타'
   async function handleBulkSetDefault() {
     const missing = restaurants.filter(r => !r.cuisineType);
     if (missing.length === 0) {
       Alert.alert('완료', '모든 식당에 음식 종류가 설정되어 있습니다.');
       return;
     }
+    const plan = missing.map(r => ({ id: r.id, cuisineType: inferCuisineForReview(r) }));
+    const counts = plan.reduce((acc, p) => { acc[p.cuisineType] = (acc[p.cuisineType] || 0) + 1; return acc; }, {});
+    const preview = CUISINE_TYPES
+      .filter(c => counts[c])
+      .map(c => `${CUISINE_EMOJI[c]} ${c}: ${counts[c]}`)
+      .join('\n');
     Alert.alert(
-      '일괄 설정',
-      `음식 종류가 없는 식당 ${missing.length}개를 "기타"로 설정합니다.`,
+      '일괄 설정 미리보기',
+      `음식 종류가 없는 식당 ${missing.length}개를 카테고리·이름으로 추론해 설정합니다.\n\n${preview}\n\n'기타'로 분류된 항목은 직접 확인해 주세요.`,
       [
         { text: '취소', style: 'cancel' },
         {
           text: `${missing.length}개 설정`, onPress: async () => {
             try {
-              await Promise.all(missing.map(r => updateReview(r.id, { cuisineType: '기타' })));
+              await Promise.all(plan.map(p => updateReview(p.id, { cuisineType: p.cuisineType })));
               Alert.alert('완료', `${missing.length}개 식당이 업데이트 되었습니다.`);
             } catch {
               Alert.alert('오류', '일부 항목 업데이트 중 오류가 발생했습니다.');
@@ -382,6 +391,11 @@ export default function AdminScreen({ onExit, t }) {
   }
 
   async function handleApproveReport(report) {
+    // 식당 DB(reviews)에는 식당 제보만 반영한다. 식품/브랜드 제보가 식당으로 들어가던 문제 방지.
+    if (report.targetType !== 'restaurant') {
+      Alert.alert('반영 불가', '식당 제보만 식당 DB에 반영할 수 있습니다.\n식품·브랜드 제보는 해당 항목에서 직접 수정해 주세요.');
+      return;
+    }
     Alert.alert(
       '제보 반영',
       `"${report.targetName}" 제보를 공식 DB에 반영하시겠습니까?\n위험도: ${report.risk}`,
@@ -390,21 +404,24 @@ export default function AdminScreen({ onExit, t }) {
         {
           text: '반영', onPress: async () => {
             try {
-              // reviews 컬렉션에 추가 (공식 반영)
-              const { collection, addDoc, deleteDoc, doc, serverTimestamp } = require('firebase/firestore');
-              const { db } = require('../firebase/config');
-              await addDoc(collection(db, 'reviews'), {
-                ko: { name: report.targetName, cat: report.targetType === 'food' ? '식품' : '식당', review: report.note || '' },
-                en: { name: report.targetName, cat: report.targetType === 'food' ? 'Food' : 'Restaurant', review: report.note || '' },
+              const uid = getCurrentUser()?.uid;
+              if (!uid) throw new Error('not signed in');
+              // dbService 경유: status(관리자면 approved) · submittedBy · cuisineType 추론 보장
+              await addReviewFromAdmin({
+                ko: { name: report.targetName, cat: '식당', review: report.note || '' },
+                en: { name: report.targetName, cat: 'Restaurant', review: report.note || '' },
                 risk: report.risk,
                 author: report.userNickname || '익명',
                 date: new Date().toISOString().slice(0, 10),
-                status: STATUS_APPROVED, // 관리자가 반영하는 항목이므로 바로 공개
-                createdAt: serverTimestamp(),
-              });
+                ...(report.address ? { address: report.address } : {}),
+                ...(report.lat != null && report.lng != null ? { lat: report.lat, lng: report.lng } : {}),
+              }, uid);
+              const { deleteDoc, doc } = require('firebase/firestore');
+              const { db } = require('../firebase/config');
               await deleteDoc(doc(db, 'userReports', report.id));
               Alert.alert('반영 완료', '공식 DB에 추가되었습니다.');
             } catch (e) {
+              if (__DEV__) console.warn('[AdminScreen] 제보 반영 실패:', e);
               Alert.alert('오류', '반영 중 문제가 생겼습니다.');
             }
           }
@@ -518,7 +535,7 @@ export default function AdminScreen({ onExit, t }) {
         {unsetCount > 0 && (
           <TouchableOpacity style={s.bulkBtn} onPress={handleBulkSetDefault}>
             <Text style={s.bulkBtnText}>
-              ⚡  미설정 {unsetCount}개 → "기타" 일괄 설정
+              ⚡  미설정 {unsetCount}개 → 카테고리로 자동 분류
             </Text>
           </TouchableOpacity>
         )}
@@ -745,7 +762,8 @@ const m = StyleSheet.create({
   },
   title: { color: 'white', fontSize: 16, fontWeight: '900', marginBottom: 4 },
   subtitle: { color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 18 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  gridScroll: { maxHeight: 360, marginBottom: 20 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 9,
