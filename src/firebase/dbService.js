@@ -248,7 +248,11 @@ export async function checkIsAdmin(uid) {
 
 /** 검수 대기 항목 구독 (brands | foods | reviews). 관리자만 규칙상 허용 */
 export function subscribePending(collectionName, callback, onError) {
-  const q = query(collection(db, collectionName), where('status', '==', STATUS_PENDING));
+  // 1.0.2 이하 앱은 reviews 를 status 'published' 로 만든다. 새 규칙 게시 전까지 생길 수 있으므로
+  // 검수 대상에 포함한다 (approved 필터에도 pending 필터에도 안 걸려 영영 안 보이는 것 방지).
+  const q = collectionName === 'reviews'
+    ? query(collection(db, collectionName), where('status', 'in', [STATUS_PENDING, 'published']))
+    : query(collection(db, collectionName), where('status', '==', STATUS_PENDING));
   return onSnapshot(
     q,
     snap => { callback(sortByCreatedDesc(snap.docs.map(d => ({ id: d.id, _collection: collectionName, ...d.data() })))); },
