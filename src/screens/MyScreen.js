@@ -2,20 +2,108 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, Alert
+  StyleSheet, Alert, Modal, TextInput, ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BRANDS, FOODS } from '../data/database';
 import { Badge } from '../components/Common';
 import { getUserProfile } from '../firebase/dbService';
+import { deleteAccount, hasRecentLogin, logout, reauthenticate } from '../firebase/authService';
 import { ProfileEditModal } from './ProfileSetupScreen';
 
 const STORAGE_KEY = 'peanutfree_favorites';
+// 계정 삭제 시 이 기기에서 지우는 로컬 키
+const LOCAL_KEYS_ON_DELETE = [STORAGE_KEY, 'pf_profileDone', 'pf_consentDone', 'pf_consentDone_v2'];
 
+/**
+ * onLogout: 로그아웃/계정 삭제 완료 후 App 상태를 초기화하는 콜백 (signOut 은 여기서 수행)
+ */
 export default function MyScreen({ lang, t, user, onLogout }) {
   const [favorites, setFavorites] = useState([]);
   const [profile, setProfile] = useState(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [pwModal, setPwModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch (e) {
+      if (__DEV__) console.warn('[MyScreen] 로그아웃 실패:', e);
+      Alert.alert(t.error, t.logoutFailed);
+      return;
+    }
+    onLogout();
+  }
+
+  // ── 계정 삭제 ─────────────────────────────────────────
+  function confirmDeleteAccount() {
+    Alert.alert(t.deleteAccountTitle, t.deleteAccountMsg, [
+      { text: t.cancel, style: 'cancel' },
+      {
+        text: t.deleteAccountNext, style: 'destructive',
+        onPress: () => {
+          Alert.alert(t.deleteAccountConfirmTitle, t.deleteAccountConfirmMsg, [
+            { text: t.cancel, style: 'cancel' },
+            { text: t.deleteAccountConfirmBtn, style: 'destructive', onPress: startDeleteAccount },
+          ]);
+        },
+      },
+    ]);
+  }
+
+  function openPasswordModal() {
+    setPassword(''); setPwError(''); setPwModal(true);
+  }
+
+  function startDeleteAccount() {
+    // 오래된 세션이면 데이터 삭제 전에 먼저 재인증 (삭제 도중 requires-recent-login 로 멈추는 것 방지)
+    if (hasRecentLogin()) runDeleteAccount();
+    else openPasswordModal();
+  }
+
+  async function submitPassword() {
+    if (!password) return;
+    setDeleting(true);
+    try {
+      await reauthenticate(password);
+    } catch (e) {
+      setDeleting(false);
+      const code = e?.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+        setPwError(t.deleteAccountWrongPw);
+      } else {
+        setPwError(t.deleteAccountFailed);
+      }
+      return;
+    }
+    setPwModal(false);
+    await runDeleteAccount();
+  }
+
+  async function runDeleteAccount() {
+    setDeleting(true);
+    let result;
+    try {
+      result = await deleteAccount();
+    } catch (e) {
+      setDeleting(false);
+      if (e?.code === 'auth/requires-recent-login') {
+        openPasswordModal();
+      } else {
+        if (__DEV__) console.warn('[MyScreen] 계정 삭제 실패:', e);
+        Alert.alert(t.error, t.deleteAccountFailed);
+      }
+      return;
+    }
+    try { await AsyncStorage.multiRemove(LOCAL_KEYS_ON_DELETE); } catch { /* ignore */ }
+    setDeleting(false);
+    const partial = result && Object.keys(result.failed || {}).length > 0;
+    Alert.alert(t.deleteAccount, partial ? t.deleteAccountPartial : t.deleteAccountDone);
+    onLogout();
+  }
 
   useEffect(() => {
     loadFavorites();
@@ -103,7 +191,7 @@ export default function MyScreen({ lang, t, user, onLogout }) {
                   onPress={() => {
                     Alert.alert(t.logout, t.logoutConfirm, [
                       { text: t.cancel, style: 'cancel' },
-                      { text: t.logout, style: 'destructive', onPress: onLogout },
+                      { text: t.logout, style: 'destructive', onPress: handleLogout },
                     ]);
                   }}
                 >
@@ -204,9 +292,55 @@ export default function MyScreen({ lang, t, user, onLogout }) {
             </View>
           );
         }}
+        ListFooterComponent={() => (
+          <TouchableOpacity
+            style={styles.deleteAccountBtn}
+            onPress={confirmDeleteAccount}
+            disabled={deleting}
+            accessibilityRole="button"
+          >
+            {deleting
+              ? <ActivityIndicator size="small" color="#AAA" />
+              : <Text style={styles.deleteAccountText}>{t.deleteAccount}</Text>}
+          </TouchableOpacity>
+        )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
+      <Modal visible={pwModal} transparent animationType="fade" onRequestClose={() => { if (!deleting) setPwModal(false); }}>
+        <View style={styles.pwOverlay}>
+          <View style={styles.pwSheet}>
+            <Text style={styles.pwTitle}>{t.deleteAccountPwTitle}</Text>
+            <Text style={styles.pwMsg}>{t.deleteAccountPwMsg}</Text>
+            <TextInput
+              value={password}
+              onChangeText={v => { setPassword(v); setPwError(''); }}
+              placeholder={t.deleteAccountPwPh}
+              placeholderTextColor="#BBB"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.pwInput}
+              onSubmitEditing={submitPassword}
+            />
+            {!!pwError && <Text style={styles.pwError}>{pwError}</Text>}
+            <View style={styles.pwBtnRow}>
+              <TouchableOpacity style={styles.pwCancel} onPress={() => setPwModal(false)} disabled={deleting}>
+                <Text style={styles.pwCancelText}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.pwConfirm, (!password || deleting) && { opacity: 0.5 }]}
+                onPress={submitPassword}
+                disabled={!password || deleting}
+              >
+                {deleting
+                  ? <ActivityIndicator size="small" color="white" />
+                  : <Text style={styles.pwConfirmText}>{t.deleteAccountConfirmBtn}</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <ProfileEditModal
         visible={showEditProfile}
         user={user}
@@ -295,4 +429,20 @@ const styles = StyleSheet.create({
   profileEmptyText: { fontSize: 12, color: '#BBB', marginBottom: 8 },
   profileSetupBtn: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#E8704A', borderRadius: 8 },
   profileSetupBtnText: { fontSize: 12, color: 'white', fontWeight: '700' },
+  deleteAccountBtn: { alignSelf: 'center', marginTop: 32, paddingVertical: 10, paddingHorizontal: 16 },
+  deleteAccountText: { fontSize: 12, color: '#AAA', textDecorationLine: 'underline' },
+  pwOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
+  pwSheet: { backgroundColor: 'white', borderRadius: 16, padding: 20 },
+  pwTitle: { fontSize: 16, fontWeight: '900', color: '#222', marginBottom: 6 },
+  pwMsg: { fontSize: 13, color: '#666', marginBottom: 14, lineHeight: 19 },
+  pwInput: {
+    borderWidth: 1.5, borderColor: '#EEE', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#333',
+  },
+  pwError: { color: '#C13A2D', fontSize: 12, marginTop: 8 },
+  pwBtnRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  pwCancel: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#F5F0EB', alignItems: 'center' },
+  pwCancelText: { fontSize: 14, color: '#666', fontWeight: '700' },
+  pwConfirm: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#C13A2D', alignItems: 'center' },
+  pwConfirmText: { fontSize: 14, color: 'white', fontWeight: '800' },
 });

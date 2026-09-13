@@ -25,7 +25,10 @@ import RestaurantScreen from './src/screens/RestaurantScreen';
 
 const TAB_ICONS = ['🏪','🍽️','🍪','🗺️','🥜','📋'];
 
-function MainApp({ lang, setLang, user, setScreen, t }) {
+// 1.0.3: 의료 면책 고지가 필수 동의 항목으로 추가되어 기존 동의를 다시 받는다.
+const CONSENT_KEY = 'pf_consentDone_v2';
+
+function MainApp({ lang, setLang, user, isAdmin, setScreen, onLogout, t }) {
   const [tabIdx, setTabIdx] = useState(0);
   const [crossTabRestaurant, setCrossTabRestaurant] = useState(null);
   const insets = useSafeAreaInsets();
@@ -41,11 +44,15 @@ function MainApp({ lang, setLang, user, setScreen, t }) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🥜  {t.appName}</Text>
         <View style={styles.headerRight}>
+          {user && isAdmin && (
+            <TouchableOpacity onPress={() => setScreen('admin')} accessibilityRole="button">
+              <View style={styles.adminBtn}>
+                <Text style={styles.adminBtnText}>🛡️ {t.adminBadge}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
           {user && (
-            <TouchableOpacity onPress={async () => {
-              const isAdmin = await checkIsAdmin(user.uid);
-              if (isAdmin) setScreen('admin');
-            }}>
+            <TouchableOpacity onPress={() => { if (isAdmin) setScreen('admin'); }}>
               <View style={styles.userChip}>
                 <Text style={styles.userChipText}>
                   {user.displayName ? user.displayName.slice(0,6) : user.email.split('@')[0].slice(0,6)}
@@ -69,7 +76,7 @@ function MainApp({ lang, setLang, user, setScreen, t }) {
         {tabIdx===2 && <FoodScreen lang={lang} t={t} user={user} />}
         {tabIdx===3 && <MapScreen lang={lang} t={t} />}
         {tabIdx===4 && <CardScreen />}
-        {tabIdx===5 && <MyScreen lang={lang} t={t} user={user} onLogout={() => setScreen('auth')} />}
+        {tabIdx===5 && <MyScreen lang={lang} t={t} user={user} onLogout={onLogout} />}
       </View>
       <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         {t.tabs.map((name, i) => (
@@ -88,6 +95,7 @@ export default function App() {
   const [screen, setScreen] = useState('loading');
   const [lang, setLang] = useState('ko');
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [consentDone, setConsentDone] = useState(false);
   const [profileDone, setProfileDone] = useState(false);
   const t = T[lang];
@@ -114,9 +122,26 @@ export default function App() {
     }
   }, []);
 
+  // 로그인 사용자가 바뀔 때마다 관리자 여부를 한 번 확인 (로그아웃 시 즉시 해제)
+  useEffect(() => {
+    const uid = user?.uid;
+    if (!uid) { setIsAdmin(false); return; }
+    let cancelled = false;
+    checkIsAdmin(uid).then(ok => { if (!cancelled) setIsAdmin(ok); });
+    return () => { cancelled = true; };
+  }, [user?.uid]);
+
+  // MyScreen 에서 signOut / 계정 삭제가 끝난 뒤 호출 — 앱 상태 초기화
+  function handleLoggedOut() {
+    setUser(null);
+    setIsAdmin(false);
+    setScreen('auth');
+  }
+
   useEffect(() => {
     const unsub = onAuthChange(u => {
       setUser(u);
+      if (!u) setIsAdmin(false);
       if (u && u.emailVerified) {
         setScreen(consentDone ? 'app' : 'consent');
       } else {
@@ -129,7 +154,7 @@ export default function App() {
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem('pf_profileDone'),
-      AsyncStorage.getItem('pf_consentDone'),
+      AsyncStorage.getItem(CONSENT_KEY),
       AsyncStorage.getItem('pf_lang'),
     ]).then(([profile, consent, savedLang]) => {
       if (profile === 'true') setProfileDone(true);
@@ -154,7 +179,7 @@ export default function App() {
       )}
       {screen === 'consent' && (
         <ConsentScreen
-          onAccept={() => { setConsentDone(true); AsyncStorage.setItem('pf_consentDone', 'true').catch(() => {}); setScreen(profileDone ? 'app' : 'profile'); }}
+          onAccept={() => { setConsentDone(true); AsyncStorage.setItem(CONSENT_KEY, 'true').catch(() => {}); setScreen(profileDone ? 'app' : 'profile'); }}
           t={t}
         />
       )}
@@ -174,11 +199,14 @@ export default function App() {
           }}
         />
       )}
-      {screen === 'admin' && (
+      {screen === 'admin' && isAdmin && (
         <AdminScreen onExit={() => setScreen('app')} t={t} />
       )}
       {screen === 'app' && (
-        <MainApp lang={lang} setLang={handleSetLang} user={user} setScreen={setScreen} t={t} />
+        <MainApp
+          lang={lang} setLang={handleSetLang} user={user} isAdmin={isAdmin}
+          setScreen={setScreen} onLogout={handleLoggedOut} t={t}
+        />
       )}
     </SafeAreaProvider>
   );
@@ -197,6 +225,8 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection:'row', alignItems:'center', gap:8 },
   userChip: { backgroundColor:'#EBF3FF', borderRadius:12, paddingHorizontal:10, paddingVertical:4 },
   userChipText: { fontSize:11, color:'#4A7FBF', fontWeight:'700' },
+  adminBtn: { backgroundColor:'#2A1F5C', borderRadius:12, paddingHorizontal:10, paddingVertical:4 },
+  adminBtnText: { fontSize:11, color:'white', fontWeight:'800' },
   langSwitch: { flexDirection:'row', backgroundColor:'#F0EDE8', borderRadius:8, padding:2, gap:2 },
   langBtn: { paddingHorizontal:8, paddingVertical:4, borderRadius:6 },
   langBtnActive: { backgroundColor:'white' },
