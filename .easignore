@@ -30,3 +30,6 @@ _old/
 # 원본 데이터
 *.xlsx
 *.csv
+
+# Firestore 로컬 백업 (사용자 데이터 포함)
+_backup/
