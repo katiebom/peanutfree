@@ -10,6 +10,7 @@ import { SC } from '../data/translations';
 import { Badge, DisclaimerFooter, SrcBadge, TagList } from './Common';
 import ReportModal from './ReportModal';
 import { CUISINE_EMOJI } from '../screens/RestaurantScreen';
+import { openGoogleMaps, openNaverMap } from '../utils/openMap';
 
 // ── 알레르기 카드 모달 ────────────────────────────────────
 const ALLERGY_TEXTS = [
@@ -133,45 +134,21 @@ function ReportSummary({ reports }) {
   );
 }
 
-// ── 공통: 지도앱 연결 버튼 3개 ──────────────────────────
+// ── 공통: 지도앱 연결 버튼 — 평점·영업정보는 지도 앱에서 최신값으로 본다 ──
 const MAP_APPS = [
-  {
-    label: '구글맵',
-    icon: '🌐',
-    color: '#4285F4',
-    textColor: 'white',
-    getUrl: name => `https://maps.google.com/?q=${encodeURIComponent(name)}`,
-    scheme: null, // 웹 URL 직접 사용
-  },
-  {
-    label: '네이버맵',
-    icon: '🟢',
-    color: '#03C75A',
-    textColor: 'white',
-    getUrl: name => `nmap://search?query=${encodeURIComponent(name)}`,
-    fallback: name => `https://map.naver.com/search/${encodeURIComponent(name)}`,
-  },
+  { label: '구글맵',   icon: '🌐', color: '#4285F4', textColor: 'white', open: openGoogleMaps },
+  { label: '네이버맵', icon: '🟢', color: '#03C75A', textColor: 'white', open: openNaverMap },
 ];
 
-async function openMap(app, name) {
-  const url = app.getUrl(name);
-  if (!app.fallback) {
-    Linking.openURL(url).catch(() => {});
-    return;
-  }
-  const canOpen = await Linking.canOpenURL(url).catch(() => false);
-  Linking.openURL(canOpen ? url : app.fallback(name)).catch(() => {});
-}
-
-function MapButtons({ name }) {
-  if (!name) return null;
+function MapButtons({ place }) {
+  if (!place?.name) return null;
   return (
     <View style={styles.mapRow}>
       {MAP_APPS.map(app => (
         <TouchableOpacity
           key={app.label}
           style={[styles.mapBtn, { backgroundColor: app.color }]}
-          onPress={() => openMap(app, name)}
+          onPress={() => app.open(place)}
           activeOpacity={0.75}
         >
           <Text style={styles.mapBtnIcon}>{app.icon}</Text>
@@ -382,7 +359,8 @@ export function RestaurantSheet({ item, lang, t, user, onClose }) {
                   </View>
                   <Text style={styles.reviewText}>{d.review}</Text>
                   <Text style={styles.metaText}>{item.author}  ·  {item.date}</Text>
-                  <MapButtons name={d.name} />
+                  {/* 네이버 검색은 한글명이 잘 잡힌다 — 영어 화면에서도 ko 이름으로 찾는다 */}
+                  <MapButtons place={{ name: item.ko?.name || d.name, address: item.address, placeId: item.placeId }} />
                   <ReportSummary reports={reports} />
                   <AllergyCardButton onPress={() => setShowAllergyCard(true)} />
                   <RecordButton onPress={() => setShowReport(true)} />

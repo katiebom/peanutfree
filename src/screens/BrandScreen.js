@@ -493,7 +493,7 @@ export default function BrandScreen({ lang, t, user, onNavigateToRestaurant }) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.placesCardName}>{p.name}</Text>
                   <Text style={styles.placesCardAddr} numberOfLines={1}>{p.address}</Text>
-                  {p.rating != null && <Text style={styles.placesCardRating}>⭐ {p.rating}</Text>}
+                  {p.rating != null && <Text style={styles.placesCardRating}>⭐ {p.rating}  ·  Google Maps</Text>}
                 </View>
                 <TouchableOpacity onPress={() => Linking.openURL(gmapsUrl)} style={styles.placesMapBtn}>
                   <Text style={styles.placesMapBtnText}>🗺️ 지도</Text>

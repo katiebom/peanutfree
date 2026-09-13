@@ -2,12 +2,13 @@
 import * as Brightness from 'expo-brightness';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Linking, Modal, Platform, ScrollView,
+  Modal, Platform, ScrollView,
   StatusBar, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { CUISINE_EMOJI } from './RestaurantScreen';
 import QuickSafetyReport from '../components/QuickSafetyReport';
 import { DisclaimerFooter } from '../components/Common';
+import { openGoogleMaps, openNaverMap } from '../utils/openMap';
 
 // ── 위험도 설정 ───────────────────────────────────────────
 const RISK_CFG = {
@@ -94,24 +95,9 @@ function AllergyCardModal({ visible, onClose }) {
 
 // ── 지도앱 연결 ───────────────────────────────────────────
 const MAP_APPS = [
-  {
-    label: '구글맵',   icon: '🌐', color: '#4285F4', textColor: 'white',
-    url:  n => `https://maps.google.com/?q=${encodeURIComponent(n)}`,
-    fallback: null,
-  },
-  {
-    label: '네이버맵', icon: '🟢', color: '#03C75A', textColor: 'white',
-    url:  n => `nmap://search?query=${encodeURIComponent(n)}`,
-    fallback: n => `https://map.naver.com/search/${encodeURIComponent(n)}`,
-  },
+  { label: '구글맵',   icon: '🌐', color: '#4285F4', textColor: 'white', open: openGoogleMaps },
+  { label: '네이버맵', icon: '🟢', color: '#03C75A', textColor: 'white', open: openNaverMap },
 ];
-
-async function openMap(app, name) {
-  const url = app.url(name);
-  if (!app.fallback) { Linking.openURL(url).catch(() => {}); return; }
-  const ok = await Linking.canOpenURL(url).catch(() => false);
-  Linking.openURL(ok ? url : app.fallback(name)).catch(() => {});
-}
 
 // ── 정보 섹션 카드 ────────────────────────────────────────
 function InfoSection({ icon, title, body, bgColor }) {
@@ -293,7 +279,7 @@ export default function RestaurantDetailScreen({ item, visible, onClose, user, l
                 <TouchableOpacity
                   key={app.label}
                   style={[d.mapBtn, { backgroundColor: app.color }]}
-                  onPress={() => openMap(app, fullName)}
+                  onPress={() => app.open({ name: fullName, address: item.address, placeId: item.placeId })}
                   activeOpacity={0.75}
                 >
                   <Text style={d.mapBtnIcon}>{app.icon}</Text>

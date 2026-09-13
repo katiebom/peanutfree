@@ -711,7 +711,7 @@ export default function MapScreen({ lang, t, user }) {
         risk: 'nearby',
         label: p.name,
         address: p.address,
-        detail: `⭐ ${p.rating}${p.userRatingsTotal ? ` (${p.userRatingsTotal.toLocaleString()}명)` : ''} · 땅콩 정보 없음 — 방문 전 직접 확인하세요`,
+        detail: `⭐ ${p.rating}${p.userRatingsTotal ? ` (${p.userRatingsTotal.toLocaleString()}명)` : ''} · Google Maps · 땅콩 정보 없음 — 방문 전 직접 확인하세요`,
       })));
     });
   }, [location]);

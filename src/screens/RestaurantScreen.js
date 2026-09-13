@@ -139,6 +139,7 @@ function PlacesCard({ place, onTap }) {
           {place.rating != null && (
             <Text style={styles.placesCardRating}>
               ⭐ {place.rating}{place.userRatingsTotal ? ` (${place.userRatingsTotal.toLocaleString()}명)` : ''}
+              <Text style={styles.googleAttribution}>  ·  Google Maps</Text>
             </Text>
           )}
         </View>
@@ -178,7 +179,6 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
   const [placesLoading, setPlacesLoading] = useState(false);
   const placesDebounce = useRef(null);
   const [recordTarget, setRecordTarget] = useState(null);
-  const [ratingFilter, setRatingFilter] = useState(false);
   const [safeOnly, setSafeOnly] = useState(false);
   const [checkInTarget, setCheckInTarget] = useState(null);
 
@@ -240,9 +240,8 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
         cautionOrExclusion: '',
         confidence: 'low',
         isVerified: false,
+        // 구글 약관상 저장 가능한 건 place_id뿐 — 평점은 저장하지 않고 지도 링크로 본다
         placeId: place.placeId,
-        googleRating: place.rating || null,
-        googleRatingCount: place.userRatingsTotal || null,
       }, user.uid);
       setPlacesResults(prev => prev.filter(p => p.placeId !== place.placeId));
       Alert.alert('추가 완료! ✅', `"${place.name}"이(가) 앱에 추가됐어요.\n다른 사용자가 알레르기 정보를 기록할 수 있어요.`);
@@ -293,17 +292,16 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
 
   // 안전 DB 검색 필터
   const filteredRestaurantsDB = restaurants.filter(r => {
-    if (!search.trim() && !safeOnly && !ratingFilter) return true;
+    if (!search.trim() && !safeOnly) return true;
     const q = search.toLowerCase();
     const matchSearch = !search.trim() || (
       (r.name || '').toLowerCase().includes(q) ||
       (r.district || '').toLowerCase().includes(q) ||
       (r.cuisineType || '').toLowerCase().includes(q)
     );
-    const matchRating = !ratingFilter || (r.googleRating != null && r.googleRating >= 4.0);
     const tier = (r.peanutRiskTier || '').toLowerCase();
     const matchSafe = !safeOnly || tier === 'low';
-    return matchSearch && matchRating && matchSafe;
+    return matchSearch && matchSafe;
   });
 
   // 검색어로 브랜드도 검색 (식당 탭에서 브랜드도 보이도록)
@@ -394,16 +392,6 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
               </Text>
             </TouchableOpacity>
 
-            {/* 구글 평점 필터 */}
-            <TouchableOpacity
-              style={[styles.ratingFilterBtn, ratingFilter && styles.ratingFilterBtnActive]}
-              onPress={() => setRatingFilter(v => !v)}
-            >
-              <Text style={[styles.ratingFilterText, ratingFilter && styles.ratingFilterTextActive]}>
-                {t.ratingFilter4}
-              </Text>
-            </TouchableOpacity>
-
             <Text style={styles.count}>
               {t.restCountFmt.replace('{n}', filtered.length)}
               {region !== '전체' && <Text style={styles.countRegion}> · {region}</Text>}
@@ -438,7 +426,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
             )}
 
             {/* 식당 안전 데이터베이스 + Google Places 통합 섹션 */}
-            {(search.trim().length >= 2 || safeOnly || ratingFilter || filteredRestaurantsDB.length > 0) && (
+            {(search.trim().length >= 2 || safeOnly || filteredRestaurantsDB.length > 0) && (
               <View style={styles.dbSection}>
                 {search.trim().length >= 2 && (
                   <View style={styles.dbGroupRow}>
@@ -477,11 +465,6 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
                             <Text style={styles.dbCardSub}>
                               {emoji} {r.cuisineType || '기타'}{r.district ? ` · 📍 ${r.district}` : ''}
                             </Text>
-                            {r.googleRating != null && (
-                              <Text style={styles.dbCardRating}>
-                                ⭐ {r.googleRating.toFixed(1)}{r.googleRatingCount ? ` (${r.googleRatingCount.toLocaleString()}명)` : ''}
-                              </Text>
-                            )}
                           </View>
                           <View style={[styles.dbRiskBadge, { backgroundColor: riskBg }]}>
                             <Text style={[styles.dbRiskText, { color: riskColor }]}>{riskLabel}</Text>
@@ -1084,15 +1067,10 @@ const styles = StyleSheet.create({
   dbCardName: { fontSize: 14, fontWeight: '800', color: '#1A1A1A', marginBottom: 2 },
   dbCardSub: { fontSize: 11, color: '#888' },
   dbCardNote: { fontSize: 11, color: '#666', marginTop: 5 },
-  dbCardRating: { fontSize: 11, color: '#F5A623', marginTop: 3 },
   safeOnlyBtn: { marginHorizontal: 12, marginBottom: 6, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1.5, borderColor: '#DDD', backgroundColor: '#FFF', alignSelf: 'stretch' },
   safeOnlyBtnActive: { borderColor: '#2D8A4E', backgroundColor: '#E8F5EC' },
   safeOnlyText: { fontSize: 14, color: '#888', fontWeight: '500', textAlign: 'center' },
   safeOnlyTextActive: { color: '#2D8A4E', fontWeight: '700' },
-  ratingFilterBtn: { marginHorizontal: 12, marginBottom: 8, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#DDD', backgroundColor: '#FFF', alignSelf: 'flex-start' },
-  ratingFilterBtnActive: { borderColor: '#F5A623', backgroundColor: '#FFFBF0' },
-  ratingFilterText: { fontSize: 13, color: '#888' },
-  ratingFilterTextActive: { color: '#E8970A', fontWeight: '600' },
   checkInBtn: { marginTop: 8, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#E8F5EC', borderWidth: 1, borderColor: '#2D8A4E', alignSelf: 'flex-start' },
   checkInBtnText: { fontSize: 12, color: '#2D8A4E', fontWeight: '700' },
   dbRiskBadge: {
@@ -1109,6 +1087,7 @@ const styles = StyleSheet.create({
   placesCardName: { fontSize: 14, fontWeight: '800', color: '#1A1A1A', marginBottom: 2 },
   placesCardAddr: { fontSize: 11, color: '#777' },
   placesCardRating: { fontSize: 11, color: '#888', marginTop: 2 },
+  googleAttribution: { fontSize: 10, color: '#5F6368' },
   placesUnknownBadge: {
     backgroundColor: '#EEE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
   },
