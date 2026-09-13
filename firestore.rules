@@ -31,11 +31,12 @@ service cloud.firestore {
       return r in ['safe', 'caution', 'danger', 'info'];
     }
 
-    // 승인 문서이거나, 관리자이거나, 본인 제보
+    // 로그인 필수. 승인 문서이거나, 관리자이거나, 본인 제보
     function canReadModerated() {
-      return resource.data.status == 'approved'
-        || isAdmin()
-        || (isAuth() && resource.data.submittedBy == request.auth.uid);
+      return isAuth()
+        && (resource.data.status == 'approved'
+          || isAdmin()
+          || resource.data.submittedBy == request.auth.uid);
     }
 
     // 사용자 제보 생성: 반드시 pending + 본인 uid
