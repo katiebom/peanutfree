@@ -398,7 +398,7 @@ export function RestaurantSheet({ item, lang, t, user, onClose }) {
       <ReportModal
         visible={showReport}
         onClose={() => setShowReport(false)}
-        target={{ type: 'restaurant', id: String(item.id), name: d.name, img: '🍽️' }}
+        target={{ type: 'restaurant', id: String(item.id), name: d.name, img: '🍽️', lat: item.lat, lng: item.lng }}
         user={user}
       />
     </>

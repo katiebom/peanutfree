@@ -95,8 +95,18 @@ const CONFLICT_SAFE   = ['all_safe'];
 const CONFLICT_DANGER = ['some_danger', 'cross_risk'];
 const RISK_ORDER = { danger: 0, caution: 1, safe: 2, info: 3 };
 
+// 기기 원시 좌표는 저장하지 않는다 (userReports 는 로그인 사용자 전체가 읽을 수 있음).
+// 소수점 3자리 ≈ 위도 방향 약 110m.
+function roundCoord(v) {
+  return Math.round(v * 1000) / 1000;
+}
+
+function isValidCoord(v) {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
 export default function ReportModal({ visible, onClose, target, user }) {
-  // target: { type: 'brand'|'food'|'restaurant', id, name, img }
+  // target: { type: 'brand'|'food'|'restaurant', id, name, img, lat?, lng? }
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [menuItem, setMenuItem] = useState('');
   const [note, setNote] = useState('');
@@ -186,12 +196,19 @@ export default function ReportModal({ visible, onClose, target, user }) {
     try {
       let lat = null, lng = null, hasLocation = false, address = '';
       if (locationMode === 'gps') {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
-          lat = loc.coords.latitude;
-          lng = loc.coords.longitude;
+        if (isValidCoord(target?.lat) && isValidCoord(target?.lng)) {
+          // 대상 장소 좌표가 있으면 기기 위치 대신 장소 좌표를 저장
+          lat = target.lat;
+          lng = target.lng;
           hasLocation = true;
+        } else {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+            lat = roundCoord(loc.coords.latitude);
+            lng = roundCoord(loc.coords.longitude);
+            hasLocation = true;
+          }
         }
       } else if (locationMode === 'search' && selectedAddress) {
         lat = selectedAddress.lat;
@@ -346,7 +363,11 @@ export default function ReportModal({ visible, onClose, target, user }) {
 
               {locationMode === 'gps' && (
                 <View style={s.locationInfo}>
-                  <Text style={s.locationInfoText}>📡  제출 시 현재 GPS 위치가 자동으로 저장됩니다</Text>
+                  <Text style={s.locationInfoText}>
+                    {isValidCoord(target?.lat) && isValidCoord(target?.lng)
+                      ? '📡  제출 시 이 장소의 위치가 저장됩니다 (내 기기 위치는 저장하지 않음)'
+                      : '📡  제출 시 현재 위치가 약 100m 단위로 대략화되어 저장됩니다'}
+                  </Text>
                 </View>
               )}
 

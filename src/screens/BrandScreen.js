@@ -82,6 +82,8 @@ function BrandRecordModal({ visible, onClose, brands, restaurants, lang, t, user
         id: r.id,
         ko: { name: r.name + (r.branch ? ' ' + r.branch : ''), cat: r.cuisineType || '식당' },
         img: '🍽️',
+        lat: r.lat,
+        lng: r.lng,
         risk: r.peanutRiskTier === 'low' ? 'safe'
             : r.peanutRiskTier === 'high' ? 'danger'
             : r.peanutRiskTier === 'medium' ? 'caution' : 'info',
@@ -130,6 +132,8 @@ function BrandRecordModal({ visible, onClose, brands, restaurants, lang, t, user
           id: selected.id,
           name: d.name,
           img: selected.img || '🍽️',
+          lat: selected._type === 'restaurant' ? selected.lat : undefined,
+          lng: selected._type === 'restaurant' ? selected.lng : undefined,
         }}
         user={user}
       />
