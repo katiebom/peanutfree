@@ -1,15 +1,65 @@
 rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 땅콩프리 Firestore 보안 규칙 (1.0.3)
+//
+// ⚠️ 배포 순서: 1.0.3 앱이 테스터에게 배포된 뒤에 콘솔에 게시할 것
+//    — 먼저 게시하면 1.0.2 앱의 목록 조회가 거부됨
+//    (1.0.2 는 brands/foods/reviews 를 status 필터 없이 조회한다.
+//     규칙은 필터가 아니므로 필터 없는 쿼리는 통째로 거부된다.)
+//
+// 검수 모델: 사용자 제보(brands/foods/reviews)는 status 'pending' + submittedBy(uid)로
+// 생성되고, 관리자가 'approved' 로 바꿔야 일반 사용자에게 보인다. 반려는 'rejected'.
+// 클라이언트의 모든 목록 쿼리는 where('status','==','approved') (일반 사용자) 또는
+// where('status','==','pending') (관리자) 를 포함해야 한다.
+// ─────────────────────────────────────────────────────────────────────────────
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // 어드민 여부 확인
     function isAdmin() {
-      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isAuth() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     // 로그인 여부 확인
     function isAuth() {
       return request.auth != null;
+    }
+
+    function isValidRisk(r) {
+      return r in ['safe', 'caution', 'danger', 'info'];
+    }
+
+    // 승인 문서이거나, 관리자이거나, 본인 제보
+    function canReadModerated() {
+      return resource.data.status == 'approved'
+        || isAdmin()
+        || (isAuth() && resource.data.submittedBy == request.auth.uid);
+    }
+
+    // 사용자 제보 생성: 반드시 pending + 본인 uid
+    function isPendingSubmissionByCaller() {
+      return isAuth()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.submittedBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+    }
+
+    // 좋아요 토글: 승인 문서의 likes 만 바뀌고, 호출자 uid 하나만 추가되거나 제거됨
+    function isLikesOnlyToggle() {
+      let before = resource.data.get('likes', []).toSet();
+      let afterList = request.resource.data.get('likes', []);
+      let after = afterList.toSet();
+      let me = [request.auth.uid].toSet();
+      let added = after.difference(before);
+      let removed = before.difference(after);
+      return isAuth()
+        && resource.data.status == 'approved'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+        && afterList.size() == after.size()
+        && ((added == me && removed.size() == 0)
+          || (removed == me && added.size() == 0));
     }
 
     // 사용자 프로필: 본인만 읽기/쓰기
@@ -23,43 +73,77 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 식당 리뷰: 인증 사용자 읽기/생성, 어드민만 수정/삭제
+    // 식당 리뷰: 승인분 공개, 작성자는 pending 으로만 생성, 관리자 수정/삭제,
+    // 작성자 본인 삭제 허용 (앱 내 계정 삭제 시 본인 리뷰 정리용)
     match /reviews/{docId} {
-      allow read: if isAuth();
-      allow create: if isAuth();
-      allow update, delete: if isAdmin();
+      allow read: if canReadModerated();
+      allow create: if isAdmin()
+        || (isPendingSubmissionByCaller() && isValidRisk(request.resource.data.risk));
+      allow update: if isAdmin();
+      allow delete: if isAdmin()
+        || (isAuth() && resource.data.submittedBy == request.auth.uid);
     }
 
-    // 브랜드: 읽기 전체, 제보(생성), 좋아요(likes 필드만 수정), 어드민 전체
+    // 브랜드
     match /brands/{docId} {
-      allow read: if isAuth();
-      allow create: if isAuth();
-      allow update: if isAdmin() ||
-        (isAuth() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow read: if canReadModerated();
+      allow create: if isAdmin()
+        || (isPendingSubmissionByCaller()
+            && isValidRisk(request.resource.data.risk)
+            && request.resource.data.get('likes', []).size() == 0);
+      allow update: if isAdmin() || isLikesOnlyToggle();
       allow delete: if isAdmin();
     }
 
-    // 식품: 읽기 전체, 제보(생성), 좋아요(likes 필드만 수정), 어드민 전체
+    // 식품
     match /foods/{docId} {
-      allow read: if isAuth();
-      allow create: if isAuth();
-      allow update: if isAdmin() ||
-        (isAuth() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow read: if canReadModerated();
+      allow create: if isAdmin()
+        || (isPendingSubmissionByCaller()
+            && isValidRisk(request.resource.data.risk)
+            && request.resource.data.get('likes', []).size() == 0);
+      allow update: if isAdmin() || isLikesOnlyToggle();
       allow delete: if isAdmin();
     }
 
-    // 사용자 제보: 인증 사용자 생성/읽기, 본인 제보 삭제, 어드민 전체 관리
+    // 사용자 제보(경험 기록): 인증 사용자 읽기, 본인 uid 로만 생성, 본인/어드민 삭제
     match /userReports/{docId} {
       allow read: if isAuth();
-      allow create: if isAuth();
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin() || (isAuth() && resource.data.userId == request.auth.uid);
     }
 
-    // 식당 DB: 인증 사용자 읽기, 생성 가능 (Google Places 추가 등)
+    // 식당 DB: 인증 사용자 읽기.
+    // 사용자 생성(Google Places 결과 추가)은 안전도 정보가 비어 있는 '미확인' 상태로만 허용.
+    // 이 컬렉션의 위험도 필드는 peanutRiskTier(low/medium/high/unknown) — 'info' 에 해당하는 값은 'unknown'.
     match /restaurants/{docId} {
       allow read: if isAuth();
-      allow create: if isAuth();
+      allow create: if isAdmin() || (
+        isAuth()
+        && request.resource.data.keys().hasOnly([
+          'name', 'branch', 'district', 'address', 'cuisineType',
+          'peanutRiskTier', 'allergyGuidanceLikelihood', 'whyFlagged',
+          'recommendedAction', 'peanutHandlingBasis', 'recommendedSaferItems',
+          'cautionOrExclusion', 'confidence', 'isVerified',
+          'placeId', 'googleRating', 'googleRatingCount',
+          'createdAt', 'createdBy'
+        ])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.peanutRiskTier == 'unknown'
+        && request.resource.data.isVerified == false
+        && request.resource.data.confidence == 'low'
+        && request.resource.data.get('allergyGuidanceLikelihood', '') == ''
+        && request.resource.data.get('whyFlagged', '') == ''
+        && request.resource.data.get('recommendedAction', '') == ''
+        && request.resource.data.get('peanutHandlingBasis', '') == ''
+        && request.resource.data.get('recommendedSaferItems', '') == ''
+        && request.resource.data.get('cautionOrExclusion', '') == ''
+      );
       allow update, delete: if isAdmin();
     }
 
