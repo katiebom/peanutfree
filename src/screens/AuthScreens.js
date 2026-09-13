@@ -181,8 +181,9 @@ function SignupForm({ onSuccess, t }) {
 
 // ── 동의 화면 ──────────────────────────────────────────────
 export function ConsentScreen({ onAccept, t }) {
-  const [checks, setChecks] = useState([false, false, false]);
-  const allChecked = checks.every(Boolean);
+  // 모든 항목(의료 면책 고지 포함)이 필수 — 전부 체크해야 버튼 활성화
+  const [checks, setChecks] = useState(() => t.consentItems.map(() => false));
+  const allChecked = checks.length === t.consentItems.length && checks.every(Boolean);
   function toggle(i) { const n=[...checks]; n[i]=!n[i]; setChecks(n); }
   return (
     <ScrollView style={styles.consentBg} contentContainerStyle={styles.consentScroll}>

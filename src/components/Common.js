@@ -1,7 +1,7 @@
 // src/components/Common.js
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { SC, srcColor } from '../data/translations';
+import { SC, srcColor, T } from '../data/translations';
 
 export function Badge({ risk, t }) {
   const s = SC[risk] || SC.caution;
@@ -9,6 +9,16 @@ export function Badge({ risk, t }) {
   return (
     <View style={[styles.badge, { backgroundColor: s.bg }]}>
       <Text style={[styles.badgeText, { color: s.color }]}>{s.icon}  {label}</Text>
+    </View>
+  );
+}
+
+/** 상세 화면 하단 고정 면책 문구 (한 줄) */
+export function DisclaimerFooter({ lang = 'ko', style }) {
+  const text = (T[lang] || T.ko).disclaimerFooter;
+  return (
+    <View style={[styles.disclaimer, style]}>
+      <Text style={styles.disclaimerText} numberOfLines={2}>{text}</Text>
     </View>
   );
 }
@@ -78,6 +88,11 @@ export function TagList({ tags, risk }) {
 }
 
 const styles = StyleSheet.create({
+  disclaimer: {
+    borderTopWidth: 1, borderTopColor: '#F0EDE8',
+    paddingTop: 8, paddingHorizontal: 4, marginTop: 4,
+  },
+  disclaimerText: { fontSize: 11, color: '#888', textAlign: 'center', lineHeight: 16 },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,

@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { subscribeUserReports } from '../firebase/dbService';
 import { SC } from '../data/translations';
-import { Badge, SrcBadge, TagList } from './Common';
+import { Badge, DisclaimerFooter, SrcBadge, TagList } from './Common';
 import ReportModal from './ReportModal';
 import { CUISINE_EMOJI } from '../screens/RestaurantScreen';
 
@@ -253,6 +253,7 @@ export function BrandSheet({ item, lang, t, user, onClose }) {
                   <RecordButton onPress={() => setShowReport(true)} />
                   <View style={{ height: 8 }} />
                 </ScrollView>
+                <DisclaimerFooter lang={lang} />
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -314,6 +315,7 @@ export function FoodSheet({ item, lang, t, user, onClose }) {
                   <RecordButton onPress={() => setShowReport(true)} />
                   <View style={{ height: 8 }} />
                 </ScrollView>
+                <DisclaimerFooter lang={lang} />
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -386,6 +388,7 @@ export function RestaurantSheet({ item, lang, t, user, onClose }) {
                   <RecordButton onPress={() => setShowReport(true)} />
                   <View style={{ height: 8 }} />
                 </ScrollView>
+                <DisclaimerFooter lang={lang} />
               </View>
             </TouchableWithoutFeedback>
           </View>

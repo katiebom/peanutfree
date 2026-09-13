@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { CUISINE_EMOJI } from './RestaurantScreen';
 import QuickSafetyReport from '../components/QuickSafetyReport';
+import { DisclaimerFooter } from '../components/Common';
 
 // ── 위험도 설정 ───────────────────────────────────────────
 const RISK_CFG = {
@@ -303,6 +304,7 @@ export default function RestaurantDetailScreen({ item, visible, onClose, user, l
 
             <View style={{ height: 36 }} />
           </ScrollView>
+          <DisclaimerFooter lang={lang} style={{ backgroundColor: 'white', paddingBottom: 12, marginTop: 0 }} />
         </View>
       </Modal>
 
