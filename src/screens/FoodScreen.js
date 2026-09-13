@@ -388,7 +388,7 @@ export default function FoodScreen({ lang, t, user }) {
         </View>
       </Modal>
       <FoodSheet item={selected} lang={lang} t={t} user={user} onClose={() => setSelected(null)} />
-      <UserSubmitModal visible={showSubmit} onClose={() => setShowSubmit(false)} type="food" user={user} />
+      <UserSubmitModal visible={showSubmit} onClose={() => setShowSubmit(false)} type="food" user={user} lang={lang} />
     </View>
   );
 }

@@ -608,6 +608,7 @@ export default function BrandScreen({ lang, t, user, onNavigateToRestaurant }) {
         onClose={() => setShowSubmit(false)}
         type="brand"
         user={user}
+        lang={lang}
       />
     </View>
   );

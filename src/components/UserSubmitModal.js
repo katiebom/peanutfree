@@ -23,7 +23,7 @@ const INIT = (isBrand) => ({
   name: '', manufacturer: '', cat: '', risk: 'info', reason: '', note: '',
 });
 
-export default function UserSubmitModal({ visible, onClose, type, user }) {
+export default function UserSubmitModal({ visible, onClose, type, user, lang = 'ko' }) {
   const isBrand = type === 'brand';
   const emojis = isBrand ? BRAND_EMOJIS : FOOD_EMOJIS;
   const [form, setForm] = useState(INIT(isBrand));
@@ -56,10 +56,14 @@ export default function UserSubmitModal({ visible, onClose, type, user }) {
       };
       if (!isBrand) data.brand = form.manufacturer.trim();
 
-      if (isBrand) await addBrand(data);
-      else await addFood(data);
+      if (isBrand) await addBrand(data, user.uid);
+      else await addFood(data, user.uid);
 
-      Alert.alert('제보 완료! 🙏', '소중한 정보를 공유해주셨어요.\n다른 알레르기 가족에게 큰 도움이 됩니다.');
+      if (lang === 'en') {
+        Alert.alert('Submitted! 🙏', 'It will be published after review. Thank you for sharing.');
+      } else {
+        Alert.alert('제보 완료! 🙏', '검토 후 공개됩니다. 소중한 정보 감사합니다.');
+      }
       reset();
       onClose();
     } catch {

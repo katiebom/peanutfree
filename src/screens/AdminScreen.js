@@ -4,7 +4,11 @@ import {
   ActivityIndicator, Alert, Modal, Platform, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { subscribeReviews, updateReview, deleteReview, subscribeUserReports } from '../firebase/dbService';
+import {
+  subscribeReviews, updateReview, deleteReview,
+  subscribePending, setModerationStatus, setModerationRisk,
+  STATUS_APPROVED, STATUS_REJECTED,
+} from '../firebase/dbService';
 import { CUISINE_TYPES, CUISINE_EMOJI } from './RestaurantScreen';
 
 const RISK_COLOR = {
@@ -140,6 +144,93 @@ function ReportRow({ item, onApprove, onDismiss }) {
   );
 }
 
+// ── 검수 대기 행 ──────────────────────────────────────────
+const COLLECTION_LABEL = { brands: '브랜드', foods: '식품', reviews: '식당 리뷰' };
+const RISK_KEYS = ['safe', 'caution', 'danger', 'info'];
+
+function pendingName(item) {
+  return item.ko?.name || item.name || '(이름없음)';
+}
+
+function pendingDetailText(item) {
+  const d = item.ko || {};
+  const lines = [
+    `구분: ${COLLECTION_LABEL[item._collection] || item._collection}`,
+    `이름: ${pendingName(item)}`,
+    item.brand ? `제조사: ${item.brand}` : null,
+    d.cat ? `카테고리: ${d.cat}` : null,
+    `위험도: ${RISK_LABEL[item.risk] || item.risk || '-'}`,
+    d.reason ? `
+이유:
+${d.reason}` : null,
+    d.review ? `
+내용:
+${d.review}` : null,
+    d.note ? `
+메모:
+${d.note}` : null,
+    item.address ? `
+주소: ${item.address}` : null,
+    item.cuisineType ? `음식 종류: ${item.cuisineType}` : null,
+    `
+제보자: ${item.submitterName || item.author || '익명'}`,
+    `제보자 uid: ${item.submittedBy || '-'}`,
+    item.createdAt?.seconds ? `제보일: ${new Date(item.createdAt.seconds * 1000).toLocaleString('ko-KR')}` : null,
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
+function PendingRow({ item, onRisk, onApprove, onReject }) {
+  const riskColor = RISK_COLOR[item.risk] || '#999';
+  return (
+    <View style={s.reportRow}>
+      <View style={[s.reportRiskBar, { backgroundColor: riskColor }]} />
+      <View style={s.reportBody}>
+        <View style={s.reportTop}>
+          <Text style={s.reportTarget} numberOfLines={1}>
+            {item.img || (item._collection === 'reviews' ? '🍽️' : '📌')} {pendingName(item)}
+          </Text>
+          <View style={s.pendingTypeChip}>
+            <Text style={s.pendingTypeText}>{COLLECTION_LABEL[item._collection]}</Text>
+          </View>
+        </View>
+        {(item.ko?.reason || item.ko?.review) ? (
+          <Text style={s.reportNote} numberOfLines={2}>{item.ko?.reason || item.ko?.review}</Text>
+        ) : null}
+        <Text style={s.reportUser}>📝 {item.submitterName || item.author || '익명'}</Text>
+        <View style={s.pendingRiskRow}>
+          {RISK_KEYS.map(k => {
+            const active = item.risk === k;
+            return (
+              <TouchableOpacity
+                key={k}
+                onPress={() => { if (!active) onRisk(item, k); }}
+                style={[s.pendingRiskBtn, active && { backgroundColor: RISK_COLOR[k], borderColor: RISK_COLOR[k] }]}
+              >
+                <Text style={[s.pendingRiskBtnText, active && { color: 'white' }]}>{RISK_LABEL[k]}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={s.reportBtns}>
+          <TouchableOpacity
+            style={s.detailBtn}
+            onPress={() => Alert.alert('제보 상세', pendingDetailText(item))}
+          >
+            <Text style={s.detailBtnText}>상세</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.approveBtn} onPress={() => onApprove(item)}>
+            <Text style={s.approveBtnText}>✓ 승인</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.dismissBtn} onPress={() => onReject(item)}>
+            <Text style={s.dismissBtnText}>✕ 반려</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ── 메인 AdminScreen ──────────────────────────────────────
 export default function AdminScreen({ onExit, t }) {
   const [restaurants, setRestaurants] = useState([]);
@@ -149,6 +240,64 @@ export default function AdminScreen({ onExit, t }) {
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [reportFilter, setReportFilter] = useState('all'); // 'all'|'danger'|'caution'|'safe'
+  const [pending, setPending] = useState({ brands: [], foods: [], reviews: [] });
+  const [pendingFilter, setPendingFilter] = useState('all'); // 'all'|'brands'|'foods'|'reviews'
+
+  useEffect(() => {
+    const unsubs = ['brands', 'foods', 'reviews'].map(name =>
+      subscribePending(name, data => setPending(prev => ({ ...prev, [name]: data })))
+    );
+    return () => unsubs.forEach(u => u());
+  }, []);
+
+  const pendingAll = [...pending.brands, ...pending.foods, ...pending.reviews];
+  const pendingCount = pendingAll.length;
+
+  async function handlePendingRisk(item, risk) {
+    try {
+      await setModerationRisk(item._collection, item.id, risk);
+    } catch {
+      Alert.alert('오류', '위험도 변경 중 문제가 발생했습니다.');
+    }
+  }
+
+  function handlePendingApprove(item) {
+    Alert.alert(
+      '승인',
+      `"${pendingName(item)}"을(를) 위험도 "${RISK_LABEL[item.risk] || item.risk}"(으)로 공개할까요?`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '승인', onPress: async () => {
+            try {
+              await setModerationStatus(item._collection, item.id, STATUS_APPROVED);
+            } catch {
+              Alert.alert('오류', '승인 중 문제가 발생했습니다.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function handlePendingReject(item) {
+    Alert.alert(
+      '반려',
+      `"${pendingName(item)}" 제보를 반려할까요?\n(삭제되지 않고 비공개 상태로 남습니다)`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '반려', style: 'destructive', onPress: async () => {
+            try {
+              await setModerationStatus(item._collection, item.id, STATUS_REJECTED);
+            } catch {
+              Alert.alert('오류', '반려 중 문제가 발생했습니다.');
+            }
+          },
+        },
+      ]
+    );
+  }
 
   useEffect(() => {
     const unsub = subscribeReviews(data => {
@@ -250,6 +399,7 @@ export default function AdminScreen({ onExit, t }) {
                 risk: report.risk,
                 author: report.userNickname || '익명',
                 date: new Date().toISOString().slice(0, 10),
+                status: STATUS_APPROVED, // 관리자가 반영하는 항목이므로 바로 공개
                 createdAt: serverTimestamp(),
               });
               await deleteDoc(doc(db, 'userReports', report.id));
@@ -290,7 +440,14 @@ export default function AdminScreen({ onExit, t }) {
     <View style={s.container}>
       {/* 헤더 */}
       <View style={s.header}>
-        <Text style={s.headerTitle}>🛡️  관리자</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={s.headerTitle}>🛡️  관리자</Text>
+          {pendingCount > 0 && (
+            <View style={s.countBadge}>
+              <Text style={s.countBadgeText}>검수 {pendingCount}</Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity style={s.exitBtn} onPress={onExit}>
           <Text style={s.exitText}>{t?.adminExit || '나가기'}</Text>
         </TouchableOpacity>
@@ -318,6 +475,43 @@ export default function AdminScreen({ onExit, t }) {
             <Text style={[s.statNum, { color: reports.length > 0 ? '#E8B84A' : 'white' }]}>{reports.length}</Text>
             <Text style={s.statLabel}>신규 제보</Text>
           </View>
+        </View>
+
+        {/* 검수 대기 */}
+        <View style={s.section}>
+          <View style={s.reportHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Text style={[s.sectionTitle, { marginBottom: 0 }]}>🕐  검수 대기</Text>
+              <View style={[s.countBadge, pendingCount === 0 && { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+                <Text style={s.countBadgeText}>{pendingCount}</Text>
+              </View>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8, marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {[['all', `전체 ${pendingCount}`], ['brands', `브랜드 ${pending.brands.length}`], ['foods', `식품 ${pending.foods.length}`], ['reviews', `리뷰 ${pending.reviews.length}`]].map(([key, label]) => (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => setPendingFilter(key)}
+                    style={[s.filterChip, pendingFilter === key && s.filterChipActive]}
+                  >
+                    <Text style={[s.filterChipText, pendingFilter === key && s.filterChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+          {pendingCount === 0 && (
+            <Text style={s.emptyText}>검수 대기 중인 제보가 없습니다.</Text>
+          )}
+          {(pendingFilter === 'all' ? pendingAll : pending[pendingFilter]).map(item => (
+            <PendingRow
+              key={`${item._collection}_${item.id}`}
+              item={item}
+              onRisk={handlePendingRisk}
+              onApprove={handlePendingApprove}
+              onReject={handlePendingReject}
+            />
+          ))}
         </View>
 
         {/* 일괄 기본값 버튼 */}
@@ -514,6 +708,29 @@ const s = StyleSheet.create({
   filterChipActive: { backgroundColor: 'rgba(91,62,232,0.35)', borderColor: '#5B3EE8' },
   filterChipText: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
   filterChipTextActive: { color: '#A78BFA', fontWeight: '700' },
+  // 검수 대기
+  countBadge: {
+    backgroundColor: '#E8704A', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 2, minWidth: 22, alignItems: 'center',
+  },
+  countBadgeText: { color: 'white', fontSize: 11, fontWeight: '900' },
+  pendingTypeChip: {
+    backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 3, marginLeft: 8,
+  },
+  pendingTypeText: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '700' },
+  pendingRiskRow: { flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
+  pendingRiskBtn: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+  },
+  pendingRiskBtnText: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '700' },
+  detailBtn: {
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 8, padding: 8, alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  detailBtnText: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '800' },
 });
 
 // ── CuisineEditModal 스타일 ───────────────────────────────

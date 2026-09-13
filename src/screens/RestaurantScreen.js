@@ -228,6 +228,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
   }, [search]);
 
   async function saveFromPlaces(place) {
+    if (!user?.uid) { Alert.alert('로그인이 필요합니다.'); return; }
     try {
       await addRestaurant({
         name: place.name,
@@ -247,7 +248,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
         placeId: place.placeId,
         googleRating: place.rating || null,
         googleRatingCount: place.userRatingsTotal || null,
-      });
+      }, user.uid);
       setPlacesResults(prev => prev.filter(p => p.placeId !== place.placeId));
       Alert.alert('추가 완료! ✅', `"${place.name}"이(가) 앱에 추가됐어요.\n다른 사용자가 알레르기 정보를 기록할 수 있어요.`);
     } catch {
@@ -628,6 +629,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
         onClose={() => setShowWrite(false)}
         lang={lang}
         t={t}
+        user={user}
       />
       <ReportModal
         visible={!!recordTarget}
@@ -648,7 +650,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
 }
 
 // ── 리뷰 작성 모달 ─────────────────────────────────────────
-function WriteReviewModal({ visible, onClose, lang, t }) {
+function WriteReviewModal({ visible, onClose, lang, t, user }) {
   const [form, setForm] = useState({
     name: '', address: '', cat: '', risk: 'safe',
     review: '', rating: 5, author: '', lat: null, lng: null,
@@ -719,6 +721,7 @@ function WriteReviewModal({ visible, onClose, lang, t }) {
   }
 
   async function submitReview() {
+    if (!user?.uid) { Alert.alert('로그인이 필요합니다.'); return; }
     setSubmitting(true);
     try {
       const now = new Date();
@@ -734,8 +737,8 @@ function WriteReviewModal({ visible, onClose, lang, t }) {
         cuisineType: form.cuisineType,
         ko: { name: form.name, cat: form.cat || '기타', tags: [], review: form.review },
         en: { name: form.name, cat: form.cat || '기타', tags: [], review: form.review },
-      });
-      Alert.alert('제보 완료! 🙏', '리뷰가 등록되었습니다. 감사합니다.');
+      }, user.uid);
+      Alert.alert(t.reviewSubmittedTitle, t.reviewSubmittedMsg);
       reset();
       onClose();
     } catch {
