@@ -9,6 +9,7 @@ import {
   serverTimestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { db } from './config';
+import { inferCuisineForReview, isValidCuisine } from '../utils/inferCuisine';
 
 // ── 검수(모더레이션) 상태 ─────────────────────────────────────
 // 사용자 제보(brands/foods/reviews)는 'pending'으로 저장되고 관리자 승인 후
@@ -100,15 +101,34 @@ export function subscribeReviews(callback, onError) {
   );
 }
 
+// reviews(식당) 컬렉션에 쓰는 유일한 경로. 앱의 모든 생성은 여기를 거친다.
+async function createReviewDoc(reviewData, uid, status) {
+  const cuisineType = isValidCuisine(reviewData.cuisineType)
+    ? reviewData.cuisineType
+    : inferCuisineForReview(reviewData);
+  return await addDoc(collection(db, 'reviews'), {
+    ...reviewData,
+    cuisineType,
+    submittedBy: uid,
+    createdAt: serverTimestamp(),
+    status,
+  });
+}
+
 /** 새 리뷰 추가 — 검수 대기(pending)로 저장. uid 는 submittedBy 에 기록 */
 export async function addReview(reviewData, uid) {
   if (!uid) throw new Error('addReview: uid required');
-  return await addDoc(collection(db, 'reviews'), {
-    ...reviewData,
-    submittedBy: uid,
-    createdAt: serverTimestamp(),
-    status: STATUS_PENDING,
-  });
+  return await createReviewDoc(reviewData, uid, STATUS_PENDING);
+}
+
+/**
+ * 관리자 화면에서 식당 리뷰를 직접 반영.
+ * 호출자가 admins/{uid} 에 있으면 바로 approved, 아니면 pending (규칙과 동일한 판단을 클라이언트에서도 한다).
+ */
+export async function addReviewFromAdmin(reviewData, uid) {
+  if (!uid) throw new Error('addReviewFromAdmin: uid required');
+  const admin = await checkIsAdmin(uid);
+  return await createReviewDoc(reviewData, uid, admin ? STATUS_APPROVED : STATUS_PENDING);
 }
 
 /** restaurants 컬렉션에 항목 추가 (Google Places 등 외부 소스) */

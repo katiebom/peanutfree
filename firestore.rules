@@ -73,12 +73,28 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 식당 리뷰: 승인분 공개, 작성자는 pending 으로만 생성, 관리자 수정/삭제,
+    // 식당 cuisineType 고정 목록 — src/utils/inferCuisine.js CUISINE_TYPES 와 동기화할 것
+    function isValidCuisine(c) {
+      return c in ['한식', '중식', '일식', '양식', '이탈리안', '피자', '버거', '샌드위치', '치킨',
+                   '멕시칸', '동남아시아', '인도', '중동', '파인다이닝', '샐러드/비건', '카페/베이커리',
+                   '주점', '기타'];
+    }
+
+    // 식당 리뷰(= 식당 목록): 승인분 공개, 작성자는 pending 으로만 생성, 관리자 수정/삭제,
     // 작성자 본인 삭제 허용 (앱 내 계정 삭제 시 본인 리뷰 정리용)
+    // 클라이언트 생성은 관리자라도 status · submittedBy · cuisineType 이 반드시 있어야 한다
+    // (status/submittedBy/cuisineType 없이 생성된 문서가 실제로 발견되어 막음. 서버 스크립트는 규칙을 우회함)
     match /reviews/{docId} {
       allow read: if canReadModerated();
-      allow create: if isAdmin()
-        || (isPendingSubmissionByCaller() && isValidRisk(request.resource.data.risk));
+      allow create: if isValidRisk(request.resource.data.risk)
+        && isValidCuisine(request.resource.data.cuisineType)
+        && (
+          isPendingSubmissionByCaller()
+          || (isAdmin()
+              && request.resource.data.status == 'approved'
+              && request.resource.data.submittedBy == request.auth.uid
+              && request.resource.data.createdAt == request.time)
+        );
       allow update: if isAdmin();
       allow delete: if isAdmin()
         || (isAuth() && resource.data.submittedBy == request.auth.uid);
