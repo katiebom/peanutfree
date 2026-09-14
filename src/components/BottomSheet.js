@@ -11,6 +11,7 @@ import { Badge, DisclaimerFooter, SrcBadge, TagList } from './Common';
 import ReportModal from './ReportModal';
 import { CUISINE_EMOJI } from '../screens/RestaurantScreen';
 import { openGoogleMaps, openNaverMap } from '../utils/openMap';
+import MenuGuideSection from './MenuGuideSection';
 
 // ── 알레르기 카드 모달 ────────────────────────────────────
 const ALLERGY_TEXTS = [
@@ -361,6 +362,7 @@ export function RestaurantSheet({ item, lang, t, user, onClose }) {
                   <Text style={styles.metaText}>{item.author}  ·  {item.date}</Text>
                   {/* 네이버 검색은 한글명이 잘 잡힌다 — 영어 화면에서도 ko 이름으로 찾는다 */}
                   <MapButtons place={{ name: item.ko?.name || d.name, address: item.address, placeId: item.placeId }} />
+                  <MenuGuideSection cuisineType={item.cuisineType} lang={lang} />
                   <ReportSummary reports={reports} />
                   <AllergyCardButton onPress={() => setShowAllergyCard(true)} />
                   <RecordButton onPress={() => setShowReport(true)} />

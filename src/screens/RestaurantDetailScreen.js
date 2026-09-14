@@ -9,6 +9,7 @@ import { CUISINE_EMOJI } from './RestaurantScreen';
 import QuickSafetyReport from '../components/QuickSafetyReport';
 import { DisclaimerFooter } from '../components/Common';
 import { openGoogleMaps, openNaverMap } from '../utils/openMap';
+import MenuGuideSection from '../components/MenuGuideSection';
 
 // ── 위험도 설정 ───────────────────────────────────────────
 const RISK_CFG = {
@@ -263,6 +264,7 @@ export default function RestaurantDetailScreen({ item, visible, onClose, user, l
               icon="🥜" title="이 식당의 땅콩 처리 방식"
               body={item.peanutHandlingBasis}
             />
+            <MenuGuideSection cuisineType={cuisineType} lang={lang} />
 
             {/* ── 하단 버튼 ──────────────────────────── */}
             <TouchableOpacity
