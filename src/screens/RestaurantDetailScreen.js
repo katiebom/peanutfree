@@ -1,6 +1,5 @@
 // src/screens/RestaurantDetailScreen.js
-import * as Brightness from 'expo-brightness';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   Modal, Platform, ScrollView,
   StatusBar, StyleSheet, Text, TouchableOpacity, View,
@@ -10,6 +9,7 @@ import QuickSafetyReport from '../components/QuickSafetyReport';
 import { DisclaimerFooter } from '../components/Common';
 import { openGoogleMaps, openNaverMap } from '../utils/openMap';
 import MenuGuideSection from '../components/MenuGuideSection';
+import { AllergyCardModal } from '../components/AllergyCard';
 
 // ── 위험도 설정 ───────────────────────────────────────────
 const RISK_CFG = {
@@ -34,64 +34,6 @@ function normalizeRisk(tier = '') {
 
 function isLowConfidence(confidence = '') {
   return ['low', 'medium'].includes(confidence.toLowerCase());
-}
-
-// ── 알레르기 카드 데이터 ──────────────────────────────────
-const ALLERGY_TEXTS = [
-  {
-    lang: 'English', flag: '🇺🇸',
-    text: 'I have a peanut allergy. My allergy is severe and life-threatening. Does this dish contain peanuts or peanut oil? Please check carefully.',
-  },
-  {
-    lang: '한국어', flag: '🇰🇷',
-    text: '저는 땅콩 알레르기가 있습니다. 알레르기 반응이 심각하여 생명에 위험할 수 있습니다. 이 음식에 땅콩이나 땅콩 기름이 들어있나요? 주의 깊게 확인해 주세요.',
-  },
-  {
-    lang: '日本語', flag: '🇯🇵',
-    text: '私はピーナッツアレルギーがあります。アレルギー反応が重篤で、生命に関わる場合があります。この料理にピーナッツやピーナッツオイルは含まれていますか？',
-  },
-];
-
-// ── 알레르기 카드 모달 ────────────────────────────────────
-function AllergyCardModal({ visible, onClose }) {
-  const prevBrRef = useRef(null);
-
-  useEffect(() => {
-    if (visible) {
-      Brightness.getBrightnessAsync().then(b => { prevBrRef.current = b; }).catch(() => {});
-      Brightness.setBrightnessAsync(1.0).catch(() => {});
-    } else if (prevBrRef.current !== null) {
-      Brightness.setBrightnessAsync(prevBrRef.current).catch(() => {});
-      prevBrRef.current = null;
-    }
-  }, [visible]);
-
-  return (
-    <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <StatusBar backgroundColor="#B71C1C" barStyle="light-content" />
-      <View style={ac.container}>
-        <TouchableOpacity style={ac.closeBtn} onPress={onClose}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={ac.closeBtnText}>✕</Text>
-        </TouchableOpacity>
-        <ScrollView contentContainerStyle={ac.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={ac.bigIcon}>🥜</Text>
-          <Text style={ac.title}>PEANUT ALLERGY</Text>
-          <Text style={ac.subtitle}>땅콩 알레르기  ·  ピーナッツアレルギー</Text>
-          <View style={ac.divider} />
-          {ALLERGY_TEXTS.map(({ lang, flag, text }) => (
-            <View key={lang} style={ac.block}>
-              <Text style={ac.blockLang}>{flag}  {lang}</Text>
-              <Text style={ac.blockText}>{text}</Text>
-            </View>
-          ))}
-          <View style={ac.divider} />
-          <Text style={ac.footer}>화면을 직원에게 보여주세요</Text>
-          <Text style={ac.footerSub}>Show this screen to the staff</Text>
-        </ScrollView>
-      </View>
-    </Modal>
-  );
 }
 
 // ── 지도앱 연결 ───────────────────────────────────────────
@@ -412,38 +354,3 @@ const d = StyleSheet.create({
   mapBtnLabel: { fontSize: 11, fontWeight: '800' },
 });
 
-// ── 스타일: 알레르기 카드 ─────────────────────────────────
-const ac = StyleSheet.create({
-  container: {
-    flex: 1, backgroundColor: '#B71C1C',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 56,
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 12 : 60,
-    right: 20, zIndex: 10,
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  closeBtnText: { color: 'white', fontSize: 18, fontWeight: '700', lineHeight: 22 },
-  scroll: { padding: 24, paddingTop: 56, paddingBottom: 60 },
-  bigIcon: { fontSize: 52, textAlign: 'center', marginBottom: 12 },
-  title: {
-    fontSize: 28, fontWeight: '900', color: 'white',
-    textAlign: 'center', letterSpacing: 1.5, marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 13, color: 'rgba(255,255,255,0.75)',
-    textAlign: 'center', marginBottom: 20,
-  },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 20 },
-  block: {
-    backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 14, padding: 18, marginBottom: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-  },
-  blockLang: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '800', marginBottom: 10 },
-  blockText: { fontSize: 17, color: 'white', lineHeight: 28, fontWeight: '600' },
-  footer: { fontSize: 16, color: 'rgba(255,255,255,0.9)', textAlign: 'center', fontWeight: '800', marginBottom: 4 },
-  footerSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', textAlign: 'center' },
-});
