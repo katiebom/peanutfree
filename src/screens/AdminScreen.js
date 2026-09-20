@@ -7,6 +7,7 @@ import {
 import {
   subscribeReviews, updateReview, deleteReview, addReviewFromAdmin,
   subscribePending, setModerationStatus, setModerationRisk,
+  subscribeFeedback, setFeedbackHandled,
   STATUS_APPROVED, STATUS_REJECTED,
 } from '../firebase/dbService';
 import { CUISINE_TYPES, CUISINE_EMOJI, inferCuisineForReview } from '../utils/inferCuisine';
@@ -16,6 +17,45 @@ const RISK_COLOR = {
   safe: '#2D8A4E', caution: '#D9622F', danger: '#C13A2D', info: '#4A7FBF',
 };
 const RISK_LABEL = { safe: '안전', caution: '주의', danger: '위험', info: '확인필요' };
+
+// 의견 보내기 칩 값 → 사람이 읽는 말 (FeedbackModal 과 같은 키)
+const FB_WHERE = { brand: '브랜드', restaurant: '식당', food: '식품', map: '지도', card: '알레르기카드', account: '가입·로그인', other: '기타' };
+const FB_KIND = { bug: '오류', wrong: '정보 틀림', missing: '없음', hard: '불편', idea: '제안', good: '칭찬' };
+const FB_KIND_COLOR = { bug: '#C13A2D', wrong: '#C13A2D', missing: '#D9622F', hard: '#D9622F', idea: '#4A7FBF', good: '#2D8A4E' };
+
+function fbDate(ts) {
+  const d = ts?.toDate ? ts.toDate() : null;
+  return d ? `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '';
+}
+
+// ── 받은 의견 한 줄 ───────────────────────────────────────
+function FeedbackRow({ item, onToggle }) {
+  const kindColor = FB_KIND_COLOR[item.kind] || '#8A7F72';
+  return (
+    <View style={[s.fbRow, item.handled && s.fbRowDone]}>
+      <View style={s.fbTop}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+          {!!item.kind && (
+            <View style={[s.fbTag, { backgroundColor: kindColor }]}>
+              <Text style={s.fbTagText}>{FB_KIND[item.kind] || item.kind}</Text>
+            </View>
+          )}
+          {!!item.where && <Text style={s.fbWhere}>{FB_WHERE[item.where] || item.where}</Text>}
+        </View>
+        <Text style={s.fbMeta}>{fbDate(item.createdAt)}</Text>
+      </View>
+      {!!item.message && <Text style={s.fbMessage}>{item.message}</Text>}
+      <View style={s.fbBottom}>
+        <Text style={s.fbMeta} numberOfLines={1}>
+          {[item.appVersion && `v${item.appVersion}`, item.platform, item.contact].filter(Boolean).join('  ·  ')}
+        </Text>
+        <TouchableOpacity style={[s.fbBtn, item.handled && s.fbBtnDone]} onPress={() => onToggle(item)}>
+          <Text style={[s.fbBtnText, item.handled && s.fbBtnTextDone]}>{item.handled ? '처리함' : '처리 표시'}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 // ── 음식 종류 수정 모달 ───────────────────────────────────
 function CuisineEditModal({ item, visible, onClose, onSave }) {
@@ -245,6 +285,8 @@ export default function AdminScreen({ onExit, t }) {
   const [reportFilter, setReportFilter] = useState('all'); // 'all'|'danger'|'caution'|'safe'
   const [pending, setPending] = useState({ brands: [], foods: [], reviews: [] });
   const [pendingFilter, setPendingFilter] = useState('all'); // 'all'|'brands'|'foods'|'reviews'
+  const [feedback, setFeedback] = useState([]);
+  const [feedbackOnlyNew, setFeedbackOnlyNew] = useState(true);
 
   useEffect(() => {
     const unsubs = ['brands', 'foods', 'reviews'].map(name =>
@@ -311,6 +353,11 @@ export default function AdminScreen({ onExit, t }) {
       });
       setLoading(false);
     });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = subscribeFeedback(setFeedback);
     return () => unsub();
   }, []);
 
@@ -452,6 +499,16 @@ export default function AdminScreen({ onExit, t }) {
   }
 
   const unsetCount = restaurants.filter(r => !r.cuisineType).length;
+  const feedbackNew = feedback.filter(f => !f.handled);
+  const feedbackShown = feedbackOnlyNew ? feedbackNew : feedback;
+
+  async function handleFeedbackToggle(item) {
+    try {
+      await setFeedbackHandled(item.id, !item.handled);
+    } catch {
+      Alert.alert('오류', '처리 표시를 저장하지 못했습니다.');
+    }
+  }
 
   return (
     <View style={s.container}>
@@ -492,6 +549,37 @@ export default function AdminScreen({ onExit, t }) {
             <Text style={[s.statNum, { color: reports.length > 0 ? '#E8B84A' : 'white' }]}>{reports.length}</Text>
             <Text style={s.statLabel}>신규 제보</Text>
           </View>
+          <View style={s.statCard}>
+            <Text style={[s.statNum, { color: feedbackNew.length > 0 ? '#E8B84A' : 'white' }]}>{feedbackNew.length}</Text>
+            <Text style={s.statLabel}>새 의견</Text>
+          </View>
+        </View>
+
+        {/* 받은 의견 */}
+        <View style={s.section}>
+          <View style={s.reportHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Text style={[s.sectionTitle, { marginBottom: 0 }]}>💬  받은 의견</Text>
+              <View style={[s.countBadge, feedbackNew.length === 0 && { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+                <Text style={s.countBadgeText}>{feedbackNew.length}</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+              {[[true, `안 본 것 ${feedbackNew.length}`], [false, `전체 ${feedback.length}`]].map(([key, label]) => (
+                <TouchableOpacity
+                  key={String(key)}
+                  onPress={() => setFeedbackOnlyNew(key)}
+                  style={[s.filterChip, feedbackOnlyNew === key && s.filterChipActive]}
+                >
+                  <Text style={[s.filterChipText, feedbackOnlyNew === key && s.filterChipTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          {feedbackShown.length === 0 && <Text style={s.emptyText}>새로 받은 의견이 없습니다.</Text>}
+          {feedbackShown.map(item => (
+            <FeedbackRow key={item.id} item={item} onToggle={handleFeedbackToggle} />
+          ))}
         </View>
 
         {/* 검수 대기 */}
@@ -645,6 +733,22 @@ const s = StyleSheet.create({
   statNum: { color: 'white', fontSize: 22, fontWeight: '900', marginBottom: 4 },
   statLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11 },
   // 일괄 설정 버튼
+  fbRow: {
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 13, marginBottom: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  fbRowDone: { opacity: 0.55 },
+  fbTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  fbTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  fbTagText: { color: 'white', fontSize: 11, fontWeight: '800' },
+  fbWhere: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '700' },
+  fbMessage: { color: 'white', fontSize: 14, lineHeight: 21, marginTop: 8 },
+  fbBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 10 },
+  fbMeta: { color: 'rgba(255,255,255,0.5)', fontSize: 11, flexShrink: 1 },
+  fbBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.14)' },
+  fbBtnDone: { backgroundColor: 'rgba(45,138,78,0.35)' },
+  fbBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  fbBtnTextDone: { color: '#9BE5B6' },
   bulkBtn: {
     backgroundColor: 'rgba(91,62,232,0.25)', borderRadius: 10,
     marginHorizontal: 16, marginBottom: 8,

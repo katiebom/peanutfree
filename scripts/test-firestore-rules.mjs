@@ -262,6 +262,8 @@ add('16 feedback create 남의 uid', 'DENY', 'A', 'create', 'feedback/x', { inco
 add('16 feedback create 비로그인', 'DENY', 'UNAUTH', 'create', 'feedback/x', { incoming: { createdBy: 'A', message: 'x', createdAt: T } });
 add('16 feedback get A', 'DENY', 'A', 'get', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
 add('16 feedback list ADMIN', 'ALLOW', 'ADMIN', 'list', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
+add('16 feedback update ADMIN', 'ALLOW', 'ADMIN', 'update', 'feedback/x', { existing: { createdBy: 'A', message: 'x' }, incoming: { createdBy: 'A', message: 'x', handled: true } });
+add('16 feedback update A', 'DENY', 'A', 'update', 'feedback/x', { existing: { createdBy: 'A', message: 'x' }, incoming: { createdBy: 'A', message: 'x', handled: true } });
 add('16 feedback delete ADMIN', 'DENY', 'ADMIN', 'delete', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
 
 // ── 실행 ────────────────────────────────────────────────────

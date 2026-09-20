@@ -177,7 +177,8 @@ service cloud.firestore {
                     && request.resource.data.message is string
                     && request.resource.data.message.size() <= 1000;
       allow read: if isAdmin();
-      allow update, delete: if false;
+      allow update: if isAdmin();   // 처리 여부 표시
+      allow delete: if false;
     }
 
     // 초대 요청: 인증 사용자 생성, 어드민 읽기/수정

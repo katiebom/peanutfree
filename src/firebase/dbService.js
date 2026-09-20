@@ -146,6 +146,20 @@ export async function addFeedback(data, uid) {
   });
 }
 
+/** 관리자 화면용 — 받은 의견 전체 구독 (최신순) */
+export function subscribeFeedback(callback) {
+  const q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q,
+    snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    err => { if (__DEV__) console.warn('[dbService] feedback 구독 실패:', err.code); callback([]); }
+  );
+}
+
+/** 관리자가 처리 여부를 표시 */
+export async function setFeedbackHandled(id, handled) {
+  return await updateDoc(doc(db, 'feedback', id), { handled: !!handled });
+}
+
 /** restaurants 컬렉션에 항목 추가 (Google Places 등 외부 소스) */
 export async function addRestaurant(data, uid) {
   if (!uid) throw new Error('addRestaurant: uid required');
