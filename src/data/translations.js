@@ -354,4 +354,4 @@ export const SC = {
 export const srcColor = { admin: "#5B8DB8", official: "#2D8A4E", user: "#C17C1A" };
 
 // 초대 코드는 Firestore inviteCodes 컬렉션에서 관리됩니다 (dbService.validateInviteCode).
-export const APP_VER = "1.0.0";
+export const APP_VER = "1.0.4";
