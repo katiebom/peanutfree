@@ -170,6 +170,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // 앱 안 의견: 로그인 사용자가 자기 이름으로 보내기만, 읽기·수정은 어드민만
+    match /feedback/{docId} {
+      allow create: if isAuth()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() <= 1000;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // 초대 요청: 인증 사용자 생성, 어드민 읽기/수정
     match /requests/{docId} {
       allow create: if isAuth();

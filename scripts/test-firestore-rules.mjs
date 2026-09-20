@@ -255,6 +255,15 @@ add('14 requests delete ADMIN', 'DENY', 'ADMIN', 'delete', 'requests/x', { exist
 // 15. 규칙 없는 컬렉션은 기본 거부 (favorites 는 앱에서 미사용)
 add('15 favorites create A', 'DENY', 'A', 'create', 'favorites/x', { incoming: { userId: 'A', itemId: 'i', itemType: 'brand', createdAt: T } });
 
+// 16. feedback (앱 안 의견)
+add('16 feedback create A', 'ALLOW', 'A', 'create', 'feedback/x', { incoming: { createdBy: 'A', message: '검색이 안 돼요', where: 'restaurant', kind: 'bug', contact: '', appVersion: '1.0.4', platform: 'android 34', createdAt: T } });
+add('16 feedback create A 빈 메시지', 'ALLOW', 'A', 'create', 'feedback/x', { incoming: { createdBy: 'A', message: '', where: null, kind: 'good', contact: '', appVersion: '1.0.4', platform: 'android 34', createdAt: T } });
+add('16 feedback create 남의 uid', 'DENY', 'A', 'create', 'feedback/x', { incoming: { createdBy: 'B', message: 'x', createdAt: T } });
+add('16 feedback create 비로그인', 'DENY', 'UNAUTH', 'create', 'feedback/x', { incoming: { createdBy: 'A', message: 'x', createdAt: T } });
+add('16 feedback get A', 'DENY', 'A', 'get', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
+add('16 feedback list ADMIN', 'ALLOW', 'ADMIN', 'list', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
+add('16 feedback delete ADMIN', 'DENY', 'ADMIN', 'delete', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
+
 // ── 실행 ────────────────────────────────────────────────────
 async function main() {
   if (process.argv.includes('--list')) {

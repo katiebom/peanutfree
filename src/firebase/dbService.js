@@ -131,6 +131,21 @@ export async function addReviewFromAdmin(reviewData, uid) {
   return await createReviewDoc(reviewData, uid, admin ? STATUS_APPROVED : STATUS_PENDING);
 }
 
+/** 앱 안 의견 보내기 — 항목은 전부 선택이고 여러 번 보낼 수 있다 */
+export async function addFeedback(data, uid) {
+  if (!uid) throw new Error('addFeedback: uid required');
+  return await addDoc(collection(db, 'feedback'), {
+    where: data.where || null,
+    kind: data.kind || null,
+    message: data.message || '',
+    contact: data.contact || '',
+    appVersion: data.appVersion || '',
+    platform: data.platform || '',
+    createdBy: uid,
+    createdAt: serverTimestamp(),
+  });
+}
+
 /** restaurants 컬렉션에 항목 추가 (Google Places 등 외부 소스) */
 export async function addRestaurant(data, uid) {
   if (!uid) throw new Error('addRestaurant: uid required');

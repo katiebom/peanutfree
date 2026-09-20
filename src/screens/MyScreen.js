@@ -10,6 +10,7 @@ import { Badge } from '../components/Common';
 import { getUserProfile } from '../firebase/dbService';
 import { deleteAccount, hasRecentLogin, logout, reauthenticate } from '../firebase/authService';
 import { ProfileEditModal } from './ProfileSetupScreen';
+import FeedbackModal from '../components/FeedbackModal';
 
 const STORAGE_KEY = 'peanutfree_favorites';
 // 계정 삭제 시 이 기기에서 지우는 로컬 키
@@ -22,6 +23,7 @@ export default function MyScreen({ lang, t, user, onLogout }) {
   const [favorites, setFavorites] = useState([]);
   const [profile, setProfile] = useState(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const [password, setPassword] = useState('');
   const [pwError, setPwError] = useState('');
@@ -293,6 +295,15 @@ export default function MyScreen({ lang, t, user, onLogout }) {
           );
         }}
         ListFooterComponent={() => (
+          <>
+          <TouchableOpacity
+            style={styles.feedbackBtn}
+            onPress={() => setShowFeedback(true)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.feedbackBtnText}>💬  의견 보내기</Text>
+            <Text style={styles.feedbackBtnSub}>불편한 점·틀린 정보·바라는 점 무엇이든</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.deleteAccountBtn}
             onPress={confirmDeleteAccount}
@@ -303,6 +314,7 @@ export default function MyScreen({ lang, t, user, onLogout }) {
               ? <ActivityIndicator size="small" color="#AAA" />
               : <Text style={styles.deleteAccountText}>{t.deleteAccount}</Text>}
           </TouchableOpacity>
+          </>
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
@@ -341,6 +353,7 @@ export default function MyScreen({ lang, t, user, onLogout }) {
           </View>
         </View>
       </Modal>
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} user={user} />
       <ProfileEditModal
         visible={showEditProfile}
         user={user}
@@ -380,6 +393,12 @@ const styles = StyleSheet.create({
   userAvatar: { fontSize: 32 },
   userName: { fontSize: 15, fontWeight: '900', color: '#1A1A1A' },
   userEmail: { fontSize: 11, color: '#999', marginTop: 2 },
+  feedbackBtn: {
+    marginTop: 22, marginHorizontal: 4, backgroundColor: 'white', borderRadius: 14,
+    paddingVertical: 15, paddingHorizontal: 18, borderWidth: 1, borderColor: '#E6DED3', alignItems: 'center',
+  },
+  feedbackBtnText: { fontSize: 15, fontWeight: '800', color: '#2D8A4E' },
+  feedbackBtnSub: { fontSize: 12, color: '#8A7F72', marginTop: 4 },
   logoutBtn: {
     backgroundColor: '#FEF0ED', borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 7,
