@@ -3,7 +3,7 @@ export const T = {
   ko: {
     appName: "땅콩프리",
     appSub: "땅콩 알레르기 가족을 위한 안심 외식 가이드",
-    tabs: ["브랜드", "식당", "식품", "지도", "카드", "내기록"],
+    tabs: ["브랜드", "식당", "식품", "지도", "알레르기카드", "내기록"],
     safe: "안전", info: "정보 제공", caution: "주의", danger: "위험",
     srcAdmin: "운영자 확인", srcOfficial: "공식 정보", srcUser: "사용자 제보",
     searchBrand: "브랜드명, 카테고리 검색...",
@@ -174,7 +174,7 @@ export const T = {
   en: {
     appName: "PeanutFree",
     appSub: "Safe dining guide for peanut allergy families",
-    tabs: ["Brands", "Restaurants", "Snacks", "Map", "Card", "My"],
+    tabs: ["Brands", "Restaurants", "Snacks", "Map", "Allergy Card", "My"],
     safe: "Safe", info: "Info", caution: "Caution", danger: "Danger",
     srcAdmin: "Admin verified", srcOfficial: "Official", srcUser: "User report",
     searchBrand: "Search brand, category...",

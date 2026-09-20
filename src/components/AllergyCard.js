@@ -43,7 +43,7 @@ function ToggleRow({ options, value, onChange }) {
 }
 
 export function AllergyCardBody({ active = true, topPadding = 0 }) {
-  const [prefs, setPrefs] = useState({ allergyType: 'peanut', severity: 'severe' });
+  const [prefs, setPrefs] = useState({ allergyType: 'peanut', severity: 'severe', staffLang: 'ko' });
   useMaxBrightness(active);
 
   useEffect(() => {
@@ -58,13 +58,24 @@ export function AllergyCardBody({ active = true, topPadding = 0 }) {
     AsyncStorage.setItem(CARD_PREFS_KEY, JSON.stringify(next)).catch(() => {});
   };
 
-  const { allergyType, severity } = prefs;
+  const { allergyType, severity, staffLang } = prefs;
   const peanut = allergyType === 'peanut';
+  const main = LANGS.find(l => l.key === staffLang) || LANGS[0];
+  const others = LANGS.filter(l => l.key !== main.key);
 
   return (
     <ScrollView contentContainerStyle={[s.scroll, { paddingTop: 24 + topPadding }]} showsVerticalScrollIndicator={false}>
+      {/* 이 줄은 직원이 아니라 사용자에게 하는 말이라 작게 맨 위에 둔다 */}
+      <Text style={s.topHint}>📱  화면을 직원에게 보여주세요 · Show this screen to the staff</Text>
+
       <View style={s.settingsCard}>
-        <Text style={s.settingsLabel}>알레르기 종류</Text>
+        <Text style={s.settingsLabel}>직원이 읽을 언어</Text>
+        <ToggleRow
+          value={staffLang}
+          onChange={v => update({ staffLang: v })}
+          options={LANGS.map(l => ({ value: l.key, label: l.flag }))}
+        />
+        <Text style={[s.settingsLabel, { marginTop: 12 }]}>알레르기 종류</Text>
         <ToggleRow
           value={allergyType}
           onChange={v => update({ allergyType: v })}
@@ -81,28 +92,28 @@ export function AllergyCardBody({ active = true, topPadding = 0 }) {
       <View style={s.divider} />
       <Text style={s.icon}>{peanut ? '🥜' : '🌰'}</Text>
       <Text style={s.title}>{peanut ? 'PEANUT ALLERGY' : 'NUT ALLERGY'}</Text>
-      <Text style={s.subtitle}>
-        {peanut ? '땅콩 알레르기  ·  ピーナッツアレルギー  ·  花生过敏' : '견과류 알레르기  ·  ナッツアレルギー  ·  坚果过敏'}
-      </Text>
-      <View style={s.divider} />
 
-      {LANGS.map(({ key, label, flag }) => (
+      {/* 고른 언어를 크게 — 이걸 읽는 사람은 직원이다 */}
+      <View style={s.mainBlock}>
+        <Text style={s.mainText}>{cardText(main.key, allergyType, severity)}</Text>
+      </View>
+
+      {severity === 'severe' && (
+        <View style={s.emergency}>
+          <Text style={s.emergencyTitle}>🚑  응급 시 · In an emergency</Text>
+          {(EMERGENCY.find(e => e.key === main.key) ? [EMERGENCY.find(e => e.key === main.key)] : EMERGENCY)
+            .map(e => <Text key={e.key} style={s.emergencyText}>{e.text}</Text>)}
+        </View>
+      )}
+
+      <View style={s.divider} />
+      <Text style={s.otherLabel}>다른 언어 · Other languages</Text>
+      {others.map(({ key, label, flag }) => (
         <View key={key} style={s.langBlock}>
           <Text style={s.langLabel}>{flag}  {label}</Text>
           <Text style={s.langText}>{cardText(key, allergyType, severity)}</Text>
         </View>
       ))}
-
-      {severity === 'severe' && (
-        <View style={s.emergency}>
-          <Text style={s.emergencyTitle}>🚑  응급 시 · In an emergency</Text>
-          {EMERGENCY.map(e => <Text key={e.key} style={s.emergencyText}>{e.text}</Text>)}
-        </View>
-      )}
-
-      <View style={s.divider} />
-      <Text style={s.footer}>📱  화면을 직원에게 보여주세요</Text>
-      <Text style={s.footerSub}>Show this screen to the staff</Text>
       <View style={{ height: 20 }} />
     </ScrollView>
   );
@@ -147,13 +158,16 @@ const s = StyleSheet.create({
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 20 },
   icon: { fontSize: 52, textAlign: 'center', marginBottom: 12, marginTop: 8 },
   title: { fontSize: 28, fontWeight: '900', color: 'white', textAlign: 'center', letterSpacing: 1.5, marginBottom: 6 },
-  subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: 20 },
+  topHint: { fontSize: 12, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginBottom: 14, fontWeight: '700' },
+  mainBlock: { backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 4 },
+  mainText: { fontSize: 24, lineHeight: 36, color: '#1F1F1F', fontWeight: '800' },
+  otherLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 },
   langBlock: {
     backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 14, padding: 18, marginBottom: 12,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
   },
   langLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '800', marginBottom: 10, letterSpacing: 0.5 },
-  langText: { fontSize: 17, color: 'white', lineHeight: 28, fontWeight: '600' },
+  langText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 20, fontWeight: '500' },
   emergency: { backgroundColor: 'white', borderRadius: 14, padding: 18, marginTop: 4 },
   emergencyTitle: { fontSize: 14, fontWeight: '900', color: '#B71C1C', marginBottom: 8 },
   emergencyText: { fontSize: 15, color: '#2B2B2B', lineHeight: 24, fontWeight: '600', marginBottom: 6 },
