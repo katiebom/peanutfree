@@ -3,3 +3,5 @@ _old/
 .expo/
 _backup/
 _research/
+.env
+.env.local
