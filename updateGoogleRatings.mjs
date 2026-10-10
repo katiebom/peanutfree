@@ -15,7 +15,8 @@ const firebaseConfig = {
   appId: "1:507912396290:web:0b107c326ac511e9c1d11b"
 };
 
-const GOOGLE_PLACES_KEY = 'REDACTED_API_KEY';
+// 키는 .env.local 에서 환경변수로: set -a; source .env.local; set +a; node updateGoogleRatings.mjs
+const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_KEY || '';
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);

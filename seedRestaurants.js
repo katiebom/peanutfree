@@ -16,7 +16,7 @@ const getDocs = (ref) => ref.get();
 const query = (ref, ...constraints) => constraints.reduce((r, c) => c(r), ref);
 const where = (field, op, val) => (ref) => ref.where(field, op, val);
 
-const KAKAO_KEY = '';
+const KAKAO_KEY = process.env.KAKAO_REST_KEY || '';   // .env.local 의 값을 환경변수로 넘겨 실행
 
 // ── 식당 데이터 (엑셀 기반) ──────────────────────────────────
 // risk: safe=땅콩 없음 확인, info=성분 확인 가능, caution=요청 필요
