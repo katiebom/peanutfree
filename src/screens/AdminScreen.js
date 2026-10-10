@@ -301,8 +301,8 @@ export default function AdminScreen({ onExit, t }) {
   async function handlePendingRisk(item, risk) {
     try {
       await setModerationRisk(item._collection, item.id, risk);
-    } catch {
-      Alert.alert('오류', '위험도 변경 중 문제가 발생했습니다.');
+    } catch (e) {
+      Alert.alert('오류', `위험도 변경 중 문제가 발생했습니다.\n(${e?.code || e?.message || 'unknown'})`);
     }
   }
 
@@ -316,8 +316,8 @@ export default function AdminScreen({ onExit, t }) {
           text: '승인', onPress: async () => {
             try {
               await setModerationStatus(item._collection, item.id, STATUS_APPROVED);
-            } catch {
-              Alert.alert('오류', '승인 중 문제가 발생했습니다.');
+            } catch (e) {
+              Alert.alert('오류', `승인 중 문제가 발생했습니다.\n(${e?.code || e?.message || 'unknown'})`);
             }
           },
         },
@@ -335,8 +335,8 @@ export default function AdminScreen({ onExit, t }) {
           text: '반려', style: 'destructive', onPress: async () => {
             try {
               await setModerationStatus(item._collection, item.id, STATUS_REJECTED);
-            } catch {
-              Alert.alert('오류', '반려 중 문제가 발생했습니다.');
+            } catch (e) {
+              Alert.alert('오류', `반려 중 문제가 발생했습니다.\n(${e?.code || e?.message || 'unknown'})`);
             }
           },
         },
