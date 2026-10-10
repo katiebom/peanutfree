@@ -13,9 +13,11 @@ import { AllergyCardModal } from '../components/AllergyCard';
 
 // ── 위험도 설정 ───────────────────────────────────────────
 const RISK_CFG = {
-  high:   { color: '#C13A2D', bg: '#FDECEA', border: '#F5C6C2', label: '위험',  icon: '🚨' },
-  medium: { color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', label: '주의',  icon: '⚠️' },
-  low:    { color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0', label: '안전',  icon: '✅' },
+  high:        { color: '#C13A2D', bg: '#FDECEA', border: '#F5C6C2', label: '고위험',      icon: '🚨' },
+  medium:      { color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', label: '요주의',      icon: '⚠️' },
+  transparent: { color: '#2F6AA8', bg: '#EBF3FF', border: '#BFD7F2', label: '성분 투명',   icon: 'ℹ️' },
+  low:         { color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0', label: '미사용 확인', icon: '✅' },
+  unknown:     { color: '#6B6B6B', bg: '#F3F3F3', border: '#DADADA', label: '미확인',      icon: '❔' },
 };
 
 const GUIDANCE_CFG = {
@@ -28,8 +30,9 @@ function normalizeRisk(tier = '') {
   const t = tier.toLowerCase();
   if (t === 'high') return 'high';
   if (t.includes('medium')) return 'medium';
+  if (t === 'transparent') return 'transparent';
   if (t === 'low') return 'low';
-  return 'medium';
+  return 'unknown';
 }
 
 function isLowConfidence(confidence = '') {

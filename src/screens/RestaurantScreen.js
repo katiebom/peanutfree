@@ -16,6 +16,7 @@ import ReportModal from '../components/ReportModal';
 import QuickSafetyReport from '../components/QuickSafetyReport';
 
 import { CUISINE_EMOJI, CUISINE_TYPES, inferCuisine } from '../utils/inferCuisine';
+import { tierToRisk, effectiveRisk } from '../utils/risk';
 
 // ── 음식 종류 고정 목록 ────────────────────────────────────
 // 정의는 src/utils/inferCuisine.js. 기존 import 경로 호환을 위해 여기서 재수출한다.
@@ -418,7 +419,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
                         <Text style={styles.brandCardCat}>{d.cat}</Text>
                         {d.reason && <Text style={styles.brandCardReason} numberOfLines={1}>{d.reason}</Text>}
                       </View>
-                      <Badge risk={brand.risk} t={t} />
+                      <Badge risk={effectiveRisk(brand)} t={t} />
                     </TouchableOpacity>
                   );
                 })}
@@ -447,8 +448,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
 
                 {filteredRestaurantsDB.length > 0 ? (
                   filteredRestaurantsDB.map(r => {
-                    const tier = (r.peanutRiskTier || '').toLowerCase();
-                    const riskKey = tier === 'high' ? 'danger' : tier === 'low' ? 'safe' : tier === 'medium' ? 'caution' : 'info';
+                    const riskKey = tierToRisk(r.peanutRiskTier);
                     const { color: riskColor, bg: riskBg, icon: riskIcon } = SC[riskKey];
                     const riskLabel = `${riskIcon} ${t[riskKey]}`;
                     const emoji = CUISINE_EMOJI[r.cuisineType || '기타'] || '🍽️';
@@ -567,7 +567,7 @@ export default function RestaurantScreen({ lang, t, user, initialRestaurant, onC
                   </View>
                   <Text style={styles.cardSub}>{cat}{cat && item.address ? ' · ' : ''}{item.address || ''}</Text>
                 </View>
-                <Badge risk={item.risk} t={t} />
+                <Badge risk={effectiveRisk(item)} t={t} />
               </View>
               {item.isBrandException && (
                 <Text style={styles.exceptionLabel}>⚠️  {t.brandEx}</Text>

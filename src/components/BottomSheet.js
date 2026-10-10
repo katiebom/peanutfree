@@ -1,4 +1,5 @@
 // src/components/BottomSheet.js
+import { effectiveRisk } from '../utils/risk';
 import { useEffect, useState } from 'react';
 import {
   Linking, Modal, ScrollView, StyleSheet,
@@ -121,7 +122,7 @@ export function BrandSheet({ item, lang, t, user, onClose }) {
                 </View>
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <View style={[styles.riskBox, { backgroundColor: s.bg }]}>
-                    <Badge risk={item.risk} t={t} />
+                    <Badge risk={effectiveRisk(item)} t={t} />
                     {item.risk === 'info' && (
                       <View style={{ marginTop: 8 }}>
                         <Text style={styles.infoText}>ℹ️  {t.infoMsg}</Text>
@@ -200,7 +201,7 @@ export function FoodSheet({ item, lang, t, user, onClose }) {
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <Text style={styles.subInfo}>{item.brand ? `${item.brand}  ·  ` : ''}{d.cat}</Text>
                   <View style={[styles.riskBox, { backgroundColor: s.bg }]}>
-                    <Badge risk={item.risk} t={t} />
+                    <Badge risk={effectiveRisk(item)} t={t} />
                     <View style={{ marginTop: 8 }}>
                       <TagList tags={d.tags} risk={item.risk} />
                     </View>
@@ -267,7 +268,7 @@ export function RestaurantSheet({ item, lang, t, user, onClose }) {
                     </View>
                   )}
                   <View style={[styles.riskBox, { backgroundColor: s.bg }]}>
-                    <Badge risk={item.risk} t={t} />
+                    <Badge risk={effectiveRisk(item)} t={t} />
                     <View style={{ marginTop: 8 }}>
                       <TagList tags={d.tags} risk={item.risk} />
                     </View>

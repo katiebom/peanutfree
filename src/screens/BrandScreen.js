@@ -21,6 +21,7 @@ import { BRANDS as LOCAL_BRANDS, REVIEWS as LOCAL_REVIEWS } from '../data/databa
 import { SC } from '../data/translations';
 import { subscribeBrands, subscribeRestaurants, toggleLike } from '../firebase/dbService';
 import { GOOGLE_PLACES_KEY } from '../config/keys';
+import { tierToRisk, effectiveRisk } from '../utils/risk';
 
 const RISK_ORDER = { danger: 0, caution: 1, info: 2, safe: 3 };
 
@@ -84,9 +85,7 @@ function BrandRecordModal({ visible, onClose, brands, restaurants, lang, t, user
         img: '🍽️',
         lat: r.lat,
         lng: r.lng,
-        risk: r.peanutRiskTier === 'low' ? 'safe'
-            : r.peanutRiskTier === 'high' ? 'danger'
-            : r.peanutRiskTier === 'medium' ? 'caution' : 'info',
+        risk: tierToRisk(r.peanutRiskTier),
         _type: 'restaurant',
       })),
   ];
@@ -201,7 +200,7 @@ function BrandRecordModal({ visible, onClose, brands, restaurants, lang, t, user
                   <Text style={ms.cardCat}>{d.cat}</Text>
                 </View>
                 <View style={ms.cardRight}>
-                  <Badge risk={item.risk} t={t} />
+                  <Badge risk={effectiveRisk(item)} t={t} />
                   <Text style={[ms.typeTag, { backgroundColor: item._type === 'brand' ? '#EBF3FF' : '#F0F7F0', color: item._type === 'brand' ? '#4A7FBF' : '#4A8F5A' }]}>
                     {item._type === 'brand' ? t.brandTypeTag : t.restTypeTag}
                   </Text>
@@ -566,7 +565,7 @@ export default function BrandScreen({ lang, t, user, onNavigateToRestaurant }) {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.cardRight}>
-                  <Badge risk={item.risk} t={t} />
+                  <Badge risk={effectiveRisk(item)} t={t} />
                   <SrcBadge src={item.src} t={t} />
                 </View>
               </TouchableOpacity>

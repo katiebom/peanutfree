@@ -2,7 +2,7 @@
 import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Animated, ActivityIndicator, Alert, FlatList, KeyboardAvoidingView,
+  Animated, ActivityIndicator, Alert, FlatList, Keyboard, KeyboardAvoidingView,
   Modal, Platform, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -12,9 +12,10 @@ import { REVIEWS } from '../data/database';
 import { subscribeBrands, subscribeMapReports, subscribeReviews, addUserReport } from '../firebase/dbService';
 import { NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, GOOGLE_PLACES_KEY } from '../config/keys';
 import { SC } from '../data/translations';
+import { effectiveRisk } from '../utils/risk';
 
 const RISK_OPTIONS = ['safe', 'caution', 'danger', 'info'];
-const RISK_LABEL = { safe: '✓  안전', caution: '!  주의', danger: '✗  위험', info: 'ℹ  확인필요' };
+const RISK_LABEL = { safe: '✓  안전(미검증)', caution: '!  요주의', danger: '✗  고위험', info: 'ℹ  성분 확인 필요' };
 
 // 프랜차이즈 체인이 아닌 일반 카테고리 브랜드는 검색 제외
 function isSearchableBrand(name) {
@@ -70,11 +71,30 @@ async function fetchBrandStores(brandName) {
 
 // ── 네이버 장소 검색 (기록용) ────────────────────────────────
 async function searchPlaces(query) {
-  if (!NAVER_CLIENT_ID || !NAVER_CLIENT_SECRET || !query.trim()) return [];
+  const q0 = query.trim();
+  if (!q0) return [];
+  if (GOOGLE_PLACES_KEY) {
+    try {
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(q0 + ' 한국')}&language=ko&key=${GOOGLE_PLACES_KEY}`
+      );
+      const data = await res.json();
+      if (data.status === 'OK') {
+        return (data.results || []).slice(0, 8).map(p => ({
+          id: p.place_id,
+          name: p.name,
+          address: p.formatted_address,
+          category: p.types?.[0] || '',
+          lat: p.geometry?.location?.lat ?? null,
+          lng: p.geometry?.location?.lng ?? null,
+        }));
+      }
+    } catch { /* 네이버로 넘어간다 */ }
+  }
+  if (!NAVER_CLIENT_ID || !NAVER_CLIENT_SECRET) return [];
   try {
-    const q = encodeURIComponent(query.trim());
     const res = await fetch(
-      `https://openapi.naver.com/v1/search/local.json?query=${q}&display=5`,
+      `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(q0)}&display=5`,
       { headers: NAVER_HDR() }
     );
     const data = await res.json();
@@ -473,6 +493,11 @@ function buildMapHTML(markers, userLat, userLng) {
       caution: '#D9622F',
       info:   '#4A7FBF',
       safe:   '#2D8A4E',
+      unknown: '#8A8A8A',
+      closed: '#555555',
+      tempClosed: '#B07A1A',
+      safeVerified: '#2D8A4E',
+      infoVerified: '#4A7FBF',
       nearby: '#F5A623',
     };
 
@@ -572,7 +597,7 @@ function buildMapHTML(markers, userLat, userLng) {
 </html>`;
 }
 
-const RISK_KO = { safe: '안전', caution: '주의', danger: '위험', info: '확인필요', nearby: '근처맛집' };
+const RISK_KO = { safe: '안전(미검증)', caution: '요주의', danger: '고위험', info: '성분 확인 필요', unknown: '미확인', closed: '폐업', tempClosed: '임시휴업', safeVerified: '안전(관리자 확인)', infoVerified: '성분 투명(관리자 확인)', nearby: '근처맛집' };
 
 // ── 지역/음식 종류별 맞춤 팁 ─────────────────────────────────
 const REGION_TIPS = [
@@ -616,13 +641,14 @@ function getRegionTip(sheetData, lang) {
 }
 const FILTERS = [
   { key: null,      label: '전체' },
-  { key: 'safe',    label: '✓ 안전' },
-  { key: 'caution', label: '! 주의' },
-  { key: 'danger',  label: '✗ 위험' },
-  { key: 'info',    label: 'ℹ 확인' },
+  { key: 'safe',    label: '✓ 안전(미검증)' },
+  { key: 'info',    label: 'ℹ 성분 확인 필요' },
+  { key: 'caution', label: '! 요주의' },
+  { key: 'danger',  label: '✗ 고위험' },
   { key: 'nearby',  label: '⭐ 근처맛집' },
 ];
 const SHEET_H = 250;
+const BRAND_STORE_PINS = false;
 
 // ── 컴포넌트 ───────────────────────────────────────────────
 export default function MapScreen({ lang, t, user }) {
@@ -639,6 +665,7 @@ export default function MapScreen({ lang, t, user }) {
   const [recordInitial, setRecordInitial] = useState(null);
   const [activeFilter, setActiveFilter] = useState(null);
   const [sheetData, setSheetData] = useState(null);
+  const [mapQuery, setMapQuery] = useState('');
   const sheetAnim = useRef(new Animated.Value(0)).current;
   const webviewRef = useRef(null);
   const brandIdsRef = useRef('');
@@ -718,7 +745,7 @@ export default function MapScreen({ lang, t, user }) {
 
   // 네이버 API로 브랜드 매장 위치 조회 (전국) — brands 목록이 실제로 바뀔 때만 재조회
   useEffect(() => {
-    if (!mapReady) return;
+    if (!BRAND_STORE_PINS || !mapReady) return;   // 네이버 검색 API 키 문제로 현재 꺼 둠 (요청 실패만 반복됨). 대안이 정해지면 true
     const newIds = brands.map(b => b.id).sort().join(',');
     if (newIds === brandIdsRef.current) return;
     brandIdsRef.current = newIds;
@@ -753,13 +780,42 @@ export default function MapScreen({ lang, t, user }) {
     );
   }
 
+  // ── 지도 검색: 앱 DB(식당·브랜드)를 즉시 검색 ──────────────
+  const normQ = t => String(t || '').toLowerCase().replace(/[\s·()\-/]+/g, '');
+  const q = normQ(mapQuery);
+  const tokens = mapQuery.toLowerCase().split(/\s+/).map(normQ).filter(Boolean); // 단어별 모두 포함 (예: '강남 피자')
+  const searchResults = q.length < 1 ? [] : [
+    ...reviews.map(rv => {
+      const d = rv[lang] || rv.ko || {};
+      return { key: `r_${rv.id || d.name}`, name: d.name || '', sub: rv.address || rv.cuisineType || '', risk: effectiveRisk(rv),
+        lat: rv.lat, lng: rv.lng, detail: d.review || '', hay: normQ(`${d.name} ${rv.cuisineType} ${rv.address}`) };
+    }),
+    ...brands.filter(b => b.ko && isSearchableBrand(b.ko.name)).map(b => {
+      const d = b[lang] || b.ko;
+      const store = brandMarkers.find(m => normQ(m.label).includes(normQ(b.ko.name)));
+      return { key: `b_${b.id}`, name: d.name, sub: `${d.cat || '브랜드'} · 전국`, risk: b.risk,
+        lat: store?.lat ?? null, lng: store?.lng ?? null, detail: d.reason || '', hay: normQ(`${d.name} ${d.cat}`) };
+    }),
+  ].filter(r => r.name && tokens.length > 0 && tokens.every(t => r.hay.includes(t)))
+   .sort((a, b) => (normQ(a.name).startsWith(q) ? 0 : 1) - (normQ(b.name).startsWith(q) ? 0 : 1))
+   .slice(0, 8);
+
+  function pickResult(r) {
+    Keyboard.dismiss();
+    setMapQuery('');
+    if (r.lat != null && r.lng != null) {
+      webviewRef.current?.injectJavaScript(`try{map.setCenter(new naver.maps.LatLng(${r.lat},${r.lng}));map.setZoom(17);}catch(e){} true;`);
+    }
+    showSheet({ label: r.name, address: r.sub, detail: r.lat == null ? `${r.detail ? r.detail + '\n' : ''}📍 위치 정보가 아직 없어요` : r.detail, risk: r.risk, lat: r.lat, lng: r.lng });
+  }
+
   const isDefaultSeoul = rv =>
     Math.abs(rv.lat - 37.5665) < 0.001 && Math.abs(rv.lng - 126.9780) < 0.001;
 
   const allMarkers = [
     ...reviews.filter(rv => rv.lat && rv.lng && !isDefaultSeoul(rv)).map(rv => {
       const d = rv[lang] || rv.ko;
-      return { lat: rv.lat, lng: rv.lng, risk: rv.risk, label: d?.name || '', detail: d?.review || '', address: rv.address || '' };
+      return { lat: rv.lat, lng: rv.lng, risk: effectiveRisk(rv), label: d?.name || '', detail: d?.review || '', address: rv.address || '' };
     }),
     ...brandMarkers,
     ...mapReports.filter(rv => rv.lat && rv.lng && !isDefaultSeoul(rv)).map(rv => ({
@@ -772,7 +828,7 @@ export default function MapScreen({ lang, t, user }) {
     ...nearbyMarkers,
   ];
 
-  const filteredMarkers = activeFilter ? allMarkers.filter(m => m.risk === activeFilter) : allMarkers;
+  const filteredMarkers = activeFilter ? allMarkers.filter(m => m.risk === activeFilter || (activeFilter === 'safe' && m.risk === 'safeVerified') || (activeFilter === 'info' && m.risk === 'infoVerified')) : allMarkers;
   const html = buildMapHTML(filteredMarkers, location?.latitude, location?.longitude);
   const NEARBY_SC = { color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', icon: '⭐' };
   const sheetSC = sheetData
@@ -803,6 +859,61 @@ export default function MapScreen({ lang, t, user }) {
           onMessage={handleWebViewMessage}
           onError={e => console.log('WebView error:', JSON.stringify(e.nativeEvent))}
         />
+
+        {/* 검색창 (플로팅) */}
+        <View style={styles.searchWrap} pointerEvents="box-none">
+          <View style={styles.searchBox}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              value={mapQuery}
+              onChangeText={setMapQuery}
+              placeholder="식당·브랜드 검색 (예: 교촌, 성수 샐러드)"
+              placeholderTextColor="#999"
+              returnKeyType="search"
+              autoCorrect={false}
+              accessibilityLabel="식당 또는 브랜드 검색"
+            />
+            {mapQuery.length > 0 && (
+              <TouchableOpacity onPress={() => { setMapQuery(''); Keyboard.dismiss(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="검색어 지우기">
+                <Text style={styles.searchClear}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {mapQuery.trim().length > 0 && (
+            <View style={styles.resultBox}>
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 320 }}>
+                {searchResults.map(r => {
+                  const sc = SC[r.risk] || SC.unknown;
+                  return (
+                    <TouchableOpacity key={r.key} style={styles.resultRow} onPress={() => pickResult(r)} activeOpacity={0.7}>
+                      <View style={[styles.resultBadge, { backgroundColor: sc.bg }]}>
+                        <Text style={[styles.resultBadgeText, { color: sc.color }]}>{sc.icon} {RISK_KO[r.risk] || '미확인'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.resultName} numberOfLines={1}>{r.name}</Text>
+                        {!!r.sub && <Text style={styles.resultSub} numberOfLines={1}>{r.sub}</Text>}
+                      </View>
+                      {r.lat == null && <Text style={styles.resultNoLoc}>위치 없음</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+                {searchResults.length === 0 && (
+                  <Text style={styles.resultEmpty}>앱에 등록된 곳이 없어요</Text>
+                )}
+                {mapQuery.trim().length >= 2 && (
+                  <TouchableOpacity
+                    style={styles.resultReport}
+                    onPress={() => { Keyboard.dismiss(); setRecordInitial(null); setShowRecord(true); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.resultReportText}>✏️ 찾는 곳이 없나요? 장소를 검색해서 직접 기록하기</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            </View>
+          )}
+        </View>
 
         {/* 필터 칩 (플로팅) */}
         <View style={styles.filterOverlay} pointerEvents="box-none">
@@ -895,8 +1006,33 @@ const styles = StyleSheet.create({
   },
   warnText: { flex: 1, fontSize: 10, color: '#8B6914' },
   filterOverlay: {
-    position: 'absolute', top: 10, left: 0, right: 0, zIndex: 10,
+    position: 'absolute', top: 62, left: 0, right: 0, zIndex: 10,
   },
+  searchWrap: { position: 'absolute', top: 10, left: 12, right: 12, zIndex: 30 },
+  searchBox: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 14,
+    paddingHorizontal: 12, height: 44, gap: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 5, elevation: 5,
+  },
+  searchIcon: { fontSize: 15 },
+  searchInput: { flex: 1, fontSize: 14, color: '#222', paddingVertical: 0 },
+  searchClear: { fontSize: 15, color: '#888', paddingHorizontal: 4 },
+  resultBox: {
+    marginTop: 6, backgroundColor: 'white', borderRadius: 14, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 5, elevation: 6,
+  },
+  resultRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 11,
+    borderBottomWidth: 1, borderBottomColor: '#F2EEE9',
+  },
+  resultBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  resultBadgeText: { fontSize: 11, fontWeight: '800' },
+  resultName: { fontSize: 14, fontWeight: '700', color: '#222' },
+  resultSub: { fontSize: 11, color: '#888', marginTop: 1 },
+  resultNoLoc: { fontSize: 10, color: '#AAA' },
+  resultEmpty: { paddingHorizontal: 14, paddingVertical: 14, fontSize: 13, color: '#888' },
+  resultReport: { paddingHorizontal: 14, paddingVertical: 13, backgroundColor: '#FFF8F3' },
+  resultReportText: { fontSize: 12.5, fontWeight: '700', color: '#E8704A' },
   filterContent: {
     paddingHorizontal: 12, gap: 8,
   },

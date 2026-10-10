@@ -264,7 +264,16 @@ add('16 feedback get A', 'DENY', 'A', 'get', 'feedback/x', { existing: { created
 add('16 feedback list ADMIN', 'ALLOW', 'ADMIN', 'list', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
 add('16 feedback update ADMIN', 'ALLOW', 'ADMIN', 'update', 'feedback/x', { existing: { createdBy: 'A', message: 'x' }, incoming: { createdBy: 'A', message: 'x', handled: true } });
 add('16 feedback update A', 'DENY', 'A', 'update', 'feedback/x', { existing: { createdBy: 'A', message: 'x' }, incoming: { createdBy: 'A', message: 'x', handled: true } });
-add('16 feedback delete ADMIN', 'DENY', 'ADMIN', 'delete', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });
+add('16 feedback delete ADMIN', 'DENY', 'ADMIN', 'delete', 'feedback/x', { existing: { createdBy: 'A', message: 'x' } });;
+
+// 17. notices (월간 업데이트 공지 팝업) — 로그인 사용자 읽기만, 쓰기는 서버 스크립트(admin SDK)만
+add('17 notices get A', 'ALLOW', 'A', 'get', 'notices/n1', { existing: { title: 't', body: 'b', active: true } });
+add('17 notices list A', 'ALLOW', 'A', 'list', 'notices/n1', { existing: { title: 't', body: 'b', active: true } });
+add('17 notices get 비로그인', 'DENY', 'UNAUTH', 'get', 'notices/n1', { existing: { title: 't', body: 'b', active: true } });
+add('17 notices create A', 'DENY', 'A', 'create', 'notices/n1', { incoming: { title: 't', body: 'b', active: true } });
+add('17 notices create ADMIN(클라이언트)', 'DENY', 'ADMIN', 'create', 'notices/n1', { incoming: { title: 't', body: 'b', active: true } });
+add('17 notices update A', 'DENY', 'A', 'update', 'notices/n1', { existing: { title: 't' }, incoming: { title: 'x' } });
+add('17 notices delete ADMIN', 'DENY', 'ADMIN', 'delete', 'notices/n1', { existing: { title: 't' } });
 
 // ── 실행 ────────────────────────────────────────────────────
 async function main() {

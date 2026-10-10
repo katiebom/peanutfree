@@ -87,7 +87,7 @@ function FoodRecordModal({ visible, onClose, foods, lang, t, user }) {
           {filtered.map(item => {
             const d = item[lang] || item.ko;
             if (!d) return null;
-            const RISK_COLOR = { danger: '#C13A2D', caution: '#D9622F', safe: '#2D8A4E', info: '#4A7FBF' };
+            const RISK_COLOR = { danger: '#C13A2D', caution: '#D9622F', safe: '#2D8A4E', info: '#4A7FBF', unknown: '#8A8A8A' };
             const color = RISK_COLOR[item.risk] || '#999';
             return (
               <TouchableOpacity

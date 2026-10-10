@@ -5,7 +5,7 @@
 import {
   collection, doc, getDocs, getDoc,
   addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, onSnapshot,
+  query, where, orderBy, limit, onSnapshot,
   serverTimestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { db } from './config';
@@ -427,4 +427,11 @@ export async function updateUserProfile(uid, data) {
     ...data,
     updatedAt: serverTimestamp(),
   });
+}
+
+/** 가장 최근 활성 공지 1건 (월간 업데이트 팝업용). 없으면 null */
+export async function fetchLatestNotice() {
+  const snap = await getDocs(query(collection(db, 'notices'), orderBy('createdAt', 'desc'), limit(5)));
+  const d = snap.docs.find(x => x.data().active === true);
+  return d ? { id: d.id, ...d.data() } : null;
 }

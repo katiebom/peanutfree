@@ -181,6 +181,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // 월간 업데이트 공지(앱 시작 팝업): 인증 사용자 읽기 전용, 쓰기는 서버 스크립트(admin SDK)만
+    match /notices/{docId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+
     // 초대 요청: 인증 사용자 생성, 어드민 읽기/수정
     match /requests/{docId} {
       allow create: if isAuth();

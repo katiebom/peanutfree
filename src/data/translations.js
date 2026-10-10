@@ -4,7 +4,7 @@ export const T = {
     appName: "땅콩프리",
     appSub: "땅콩 알레르기 가족을 위한 안심 외식 가이드",
     tabs: ["브랜드", "식당", "식품", "지도", "알레르기카드", "내기록"],
-    safe: "안전", info: "정보 제공", caution: "주의", danger: "위험",
+    safe: "안전(미검증)", info: "성분 확인 필요", caution: "요주의", danger: "고위험", unknown: "미확인", closed: "폐업", tempClosed: "임시휴업", safeVerified: "안전(관리자 확인)", infoVerified: "성분 투명(관리자 확인)",
     srcAdmin: "운영자 확인", srcOfficial: "공식 정보", srcUser: "사용자 제보",
     searchBrand: "브랜드명, 카테고리 검색...",
     searchFood: "제품명, 브랜드 검색...",
@@ -175,7 +175,7 @@ export const T = {
     appName: "PeanutFree",
     appSub: "Safe dining guide for peanut allergy families",
     tabs: ["Brands", "Restaurants", "Snacks", "Map", "Allergy Card", "My"],
-    safe: "Safe", info: "Info", caution: "Caution", danger: "Danger",
+    safe: "Safe (unverified)", info: "Check ingredients", caution: "Caution", danger: "High risk", unknown: "Unverified", closed: "Closed", tempClosed: "Temporarily closed", safeVerified: "Safe (admin-verified)", infoVerified: "Transparent (admin-verified)",
     srcAdmin: "Admin verified", srcOfficial: "Official", srcUser: "User report",
     searchBrand: "Search brand, category...",
     searchFood: "Search product, brand...",
@@ -349,6 +349,11 @@ export const SC = {
   info:    { color: "#4A7FBF", bg: "#EBF3FF", icon: "ℹ" },
   caution: { color: "#C17C1A", bg: "#FDF3E3", icon: "!" },
   danger:  { color: "#C13A2D", bg: "#FDECEA", icon: "✗" },
+  unknown: { color: "#8A8A8A", bg: "#F0F0F0", icon: "?" },
+  infoVerified: { color: "#4A7FBF", bg: "#EBF3FF", icon: "ℹ" },
+  safeVerified: { color: "#2D8A4E", bg: "#E8F5ED", icon: "✓" },
+  closed:  { color: "#555555", bg: "#E4E4E4", icon: "⛔" },
+  tempClosed: { color: "#8A6210", bg: "#FFF3D6", icon: "⏸" },
 };
 
 export const srcColor = { admin: "#5B8DB8", official: "#2D8A4E", user: "#C17C1A" };

@@ -21,6 +21,7 @@ import CardScreen from './src/screens/CardScreen';
 import FoodScreen from './src/screens/FoodScreen';
 import MapScreen from './src/screens/MapScreen';
 import MyScreen from './src/screens/MyScreen';
+import NoticePopup from './src/components/NoticePopup';
 import RestaurantScreen from './src/screens/RestaurantScreen';
 
 const TAB_ICONS = ['🏪','🍽️','🍪','🗺️','🥜','📋'];
@@ -208,6 +209,7 @@ export default function App() {
           setScreen={setScreen} onLogout={handleLoggedOut} t={t}
         />
       )}
+      {screen === 'app' && <NoticePopup user={user} />}
     </SafeAreaProvider>
   );
 }

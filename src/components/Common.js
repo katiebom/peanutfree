@@ -5,7 +5,7 @@ import { SC, srcColor, T } from '../data/translations';
 
 export function Badge({ risk, t }) {
   const s = SC[risk] || SC.caution;
-  const label = { safe: t.safe, info: t.info, caution: t.caution, danger: t.danger }[risk] || risk;
+  const label = { safe: t.safe, info: t.info, caution: t.caution, danger: t.danger, unknown: t.unknown, closed: t.closed, tempClosed: t.tempClosed, safeVerified: t.safeVerified, infoVerified: t.infoVerified }[risk] || risk;
   return (
     <View style={[styles.badge, { backgroundColor: s.bg }]}>
       <Text style={[styles.badgeText, { color: s.color }]}>{s.icon}  {label}</Text>

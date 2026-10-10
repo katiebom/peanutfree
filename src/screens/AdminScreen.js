@@ -14,9 +14,9 @@ import { CUISINE_TYPES, CUISINE_EMOJI, inferCuisineForReview } from '../utils/in
 import { getCurrentUser } from '../firebase/authService';
 
 const RISK_COLOR = {
-  safe: '#2D8A4E', caution: '#D9622F', danger: '#C13A2D', info: '#4A7FBF',
+  safe: '#2D8A4E', caution: '#D9622F', danger: '#C13A2D', info: '#4A7FBF', unknown: '#8A8A8A',
 };
-const RISK_LABEL = { safe: '안전', caution: '주의', danger: '위험', info: '확인필요' };
+const RISK_LABEL = { safe: '안전(미검증)', caution: '요주의', danger: '고위험', info: '성분 확인 필요', unknown: '미확인' };
 
 // 의견 보내기 칩 값 → 사람이 읽는 말 (FeedbackModal 과 같은 키)
 const FB_WHERE = { brand: '브랜드', restaurant: '식당', food: '식품', map: '지도', card: '알레르기카드', account: '가입·로그인', other: '기타' };
@@ -157,8 +157,8 @@ function RestaurantRow({ item, onEditCuisine, onDelete }) {
 
 // ── 제보 행 ───────────────────────────────────────────────
 function ReportRow({ item, onApprove, onDismiss }) {
-  const RISK_COLOR = { safe: '#2D8A4E', caution: '#D9622F', danger: '#C13A2D', info: '#4A7FBF' };
-  const RISK_LABEL = { safe: '안전', caution: '주의', danger: '위험', info: '확인필요' };
+  const RISK_COLOR = { safe: '#2D8A4E', caution: '#D9622F', danger: '#C13A2D', info: '#4A7FBF', unknown: '#8A8A8A' };
+  const RISK_LABEL = { safe: '안전(미검증)', caution: '요주의', danger: '고위험', info: '성분 확인 필요', unknown: '미확인' };
   const riskColor = RISK_COLOR[item.risk] || '#999';
 
   return (
