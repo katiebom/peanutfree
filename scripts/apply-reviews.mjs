@@ -62,6 +62,7 @@ for (const r of items) {
     doc.en = doc.ko;
   }
   const ref = db.collection(route === 'brand' ? 'brands' : 'reviews').doc();
+  if (route === 'brand') doc.id = ref.id; // 앱 목록은 {id: d.id, ...d.data()} 로 만들어 data.id 가 문서 ID 를 덮어쓴다 — 둘이 다르면 승인(updateDoc)이 not-found 로 실패
   plan.create.push({ route, doc, ref, key: keyOf(r), fp: r.fp, tier: r.peanutRiskTier });
 }
 
