@@ -9,4 +9,4 @@ _research/
 serviceAccountKey.json
 
 # 파이프라인 로컬 상태
-data/
+/data/
