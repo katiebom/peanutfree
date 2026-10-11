@@ -130,7 +130,7 @@ async function fetchNearbyHighRated(lat, lng) {
 }
 
 // ── 지도 기록 모달 (2단계: 검색 → 입력) ─────────────────────
-function MapRecordFlow({ visible, onClose, user, initialPlace, brands = [] }) {
+function MapRecordFlow({ visible, onClose, user, initialPlace, brands = [], location = null }) {
   const [step, setStep] = useState(1);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -226,7 +226,9 @@ function MapRecordFlow({ visible, onClose, user, initialPlace, brands = [] }) {
         userId: user.uid,
         userNickname: user.displayName || '익명',
       });
-      Alert.alert('기록 완료! 🙏', '소중한 경험을 공유해주셨습니다.\n지도에 마커로 표시됩니다.');
+      Alert.alert('기록 완료! 🙏', hasLocation
+        ? '소중한 경험을 공유해주셨습니다.\n지도에 마커로 표시됩니다.'
+        : '소중한 경험을 공유해주셨습니다.\n위치 정보가 없어 지도에는 표시되지 않아요. 관리자 확인 후 반영됩니다.');
       reset();
       onClose();
     } catch {
@@ -309,23 +311,44 @@ function MapRecordFlow({ visible, onClose, user, initialPlace, brands = [] }) {
               }}
               contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
               ListFooterComponent={() => query.trim().length >= 2 && !searching ? (
-                <TouchableOpacity
-                  style={r.directCard}
-                  onPress={() => handleSelect({
-                    id: `custom_${Date.now()}`,
-                    name: query.trim(),
-                    address: '위치 없음',
-                    lat: null,
-                    lng: null,
-                  })}
-                  activeOpacity={0.7}
-                >
-                  <Text style={r.directCardIcon}>✏️</Text>
-                  <View style={r.directCardBody}>
-                    <Text style={r.directCardName}>"{query.trim()}" 이름으로 직접 기록하기</Text>
-                    <Text style={r.directCardHint}>목록에 없는 식당도 기록할 수 있어요 (위치 미포함)</Text>
-                  </View>
-                </TouchableOpacity>
+                <View>
+                  {location && (
+                    <TouchableOpacity
+                      style={r.directCard}
+                      onPress={() => handleSelect({
+                        id: `custom_${Date.now()}`,
+                        name: query.trim(),
+                        address: '현재 위치 기준',
+                        lat: location.latitude,
+                        lng: location.longitude,
+                      })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={r.directCardIcon}>📍</Text>
+                      <View style={r.directCardBody}>
+                        <Text style={r.directCardName}>"{query.trim()}" 현재 위치로 기록하기</Text>
+                        <Text style={r.directCardHint}>지금 그 식당 근처에 계시다면 이 방법이 정확해요. 지도에 표시됩니다</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={r.directCard}
+                    onPress={() => handleSelect({
+                      id: `custom_${Date.now()}`,
+                      name: query.trim(),
+                      address: '위치 없음',
+                      lat: null,
+                      lng: null,
+                    })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={r.directCardIcon}>✏️</Text>
+                    <View style={r.directCardBody}>
+                      <Text style={r.directCardName}>"{query.trim()}" 위치 없이 기록하기</Text>
+                      <Text style={r.directCardHint}>지도에는 표시되지 않고, 관리자 확인 후 반영돼요</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
               ) : null}
             />
           </View>
@@ -1064,6 +1087,7 @@ export default function MapScreen({ lang, t, user }) {
         user={user}
         initialPlace={recordInitial}
         brands={brands}
+        location={location}
       />
     </View>
   );
