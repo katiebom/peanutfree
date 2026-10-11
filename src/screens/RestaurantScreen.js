@@ -738,7 +738,7 @@ function WriteReviewModal({ visible, onClose, lang, t, user }) {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
-      <KeyboardAvoidingView style={styles.writeModal} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.writeModal} behavior="padding">
         <View style={styles.writeHeader}>
           <Text style={styles.writeTitle}>{t.writeModalTitle}</Text>
           <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>

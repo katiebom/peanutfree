@@ -16,9 +16,14 @@ export function AuthScreen({ onSuccess, lang, setLang, t }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
+      >
         {/* 언어 스위치 */}
         <View style={styles.langRow}>
           {['ko','en'].map(l => (
@@ -209,7 +214,7 @@ export function ConsentScreen({ onAccept, t }) {
 
 const styles = StyleSheet.create({
   container: { flex:1, backgroundColor:'#FAF8F5' },
-  scroll: { padding:24, alignItems:'center', paddingTop:56, paddingBottom:40 },
+  scroll: { padding:24, alignItems:'center', paddingTop:56, paddingBottom:120 },
   langRow: {
     flexDirection:'row', backgroundColor:'#F0EDE8',
     borderRadius:10, padding:3, gap:2, marginBottom:28,

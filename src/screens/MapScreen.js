@@ -237,7 +237,7 @@ function MapRecordFlow({ visible, onClose, user, initialPlace, brands = [] }) {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
-      <KeyboardAvoidingView style={r.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={r.wrap} behavior="padding">
 
         {/* 헤더 */}
         <View style={r.header}>
