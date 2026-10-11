@@ -1,6 +1,6 @@
 // src/screens/MapScreen.js
 import * as Location from 'expo-location';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated, ActivityIndicator, Alert, FlatList, Keyboard, KeyboardAvoidingView,
   Modal, Platform, ScrollView, StyleSheet,
@@ -10,7 +10,7 @@ import { WebView } from 'react-native-webview';
 import { BRANDS as LOCAL_BRANDS } from '../data/database';
 import { REVIEWS } from '../data/database';
 import { subscribeBrands, subscribeMapReports, subscribeReviews, addUserReport } from '../firebase/dbService';
-import { NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, GOOGLE_PLACES_KEY } from '../config/keys';
+import { NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, NAVER_MAPS_CLIENT_ID, GOOGLE_PLACES_KEY } from '../config/keys';
 import { SC } from '../data/translations';
 import { effectiveRisk } from '../utils/risk';
 
@@ -405,44 +405,15 @@ function MapRecordFlow({ visible, onClose, user, initialPlace, brands = [] }) {
   );
 }
 
-// ── 네이버 지도 HTML 빌더 (MarkerClustering + 바텀시트 연동) ──
-function buildMapHTML(markers, userLat, userLng) {
-  const centerLat = userLat || 37.5665;
-  const centerLng = userLng || 126.9780;
-
-  const markersJSON = JSON.stringify(
-    markers.map(m => ({
-      lat: m.lat, lng: m.lng, risk: m.risk || 'info',
-      label: (m.label || '').substring(0, 40),
-      address: (m.address || '').substring(0, 60),
-      detail: (m.detail || '').substring(0, 80),
-      isUserReport: !!m.isUserReport,
-    }))
-  );
-
-  const userMarkerJS = (userLat && userLng) ? `
-    new naver.maps.Marker({
-      position: new naver.maps.LatLng(${userLat}, ${userLng}),
-      map: map,
-      icon: {
-        content: '<div style="width:18px;height:18px;border-radius:50%;background:#4A7FBF;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>',
-        size: new naver.maps.Size(18, 18),
-        anchor: new naver.maps.Point(9, 9),
-      },
-      zIndex: 1000,
-    });
-  ` : '';
-
-  const locBtnHTML = (userLat && userLng)
-    ? `<div id="loc-btn" onclick="map.setCenter(new naver.maps.LatLng(${userLat},${userLng}));map.setZoom(16)">📍</div>` : '';
-
+// ── 네이버 지도 HTML (한 번만 로드) ───────────────────────────
+// 마커·사용자 위치는 로드 후 window.setMarkers / window.setUser 로 주입한다.
+// 클러스터링은 외부 스크립트 없이 페이지 안에서 직접 처리한다(뷰포트 안 마커만 렌더).
+function buildMapHTML(clientId) {
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${NAVER_CLIENT_ID}"></script>
-  <script src="https://navermaps.github.io/maps.js.ncp/docs/marker-clustering.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body, #map { width:100%; height:100%; overflow:hidden; }
@@ -453,10 +424,7 @@ function buildMapHTML(markers, userLat, userLng) {
       transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
       will-change: transform;
     }
-    .mk-dot.selected {
-      transform: scale(1.6);
-      box-shadow:0 4px 12px rgba(0,0,0,0.45);
-    }
+    .mk-dot.selected { transform: scale(1.6); box-shadow:0 4px 12px rgba(0,0,0,0.45); }
     .cluster-mk {
       display:flex; align-items:center; justify-content:center;
       border-radius:50%; color:white; font-weight:900;
@@ -473,125 +441,172 @@ function buildMapHTML(markers, userLat, userLng) {
     #loc-btn {
       position:absolute; bottom:90px; right:18px; z-index:999;
       width:40px; height:40px; background:white; border-radius:10px;
-      display:flex; align-items:center; justify-content:center;
+      display:none; align-items:center; justify-content:center;
       box-shadow:0 2px 8px rgba(0,0,0,0.2); cursor:pointer; font-size:18px;
     }
     #loc-btn:active { background:#F5F0EB; }
   </style>
-</head>
-<body>
-  <div id="map"></div>
-  <div id="fab" onclick="sendMsg({type:'openRecord'})">✏️</div>
-  ${locBtnHTML}
   <script>
     function sendMsg(obj) {
       if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(obj));
     }
-
-    var RISK_FILL = {
-      danger: '#C13A2D',
-      caution: '#D9622F',
-      info:   '#4A7FBF',
-      safe:   '#2D8A4E',
-      unknown: '#8A8A8A',
-      closed: '#555555',
-      tempClosed: '#B07A1A',
-      safeVerified: '#2D8A4E',
-      infoVerified: '#4A7FBF',
-      nearby: '#F5A623',
+    // SDK 가 콘솔에 남기는 인증 오류 사유를 RN 으로 전달(오류 화면에 표시)
+    var _info = console.info;
+    console.info = function() {
+      try { sendMsg({ type: 'diag', text: Array.prototype.slice.call(arguments).map(function(a) { return typeof a === 'string' ? a : ''; }).join(' ').substring(0, 300) }); } catch (e) {}
+      return _info && _info.apply(console, arguments);
     };
+    window.addEventListener('error', function(e) { sendMsg({ type: 'diag', text: 'js: ' + (e.message || '') + ' ' + (e.filename || '') }); }, true);
+    window.navermap_authFailure = function() { sendMsg({ type: 'error', reason: 'auth' }); };
+  </script>
+  <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}"
+          onerror="sendMsg({ type: 'error', reason: 'sdk' })"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="fab" onclick="sendMsg({type:'openRecord'})">✏️</div>
+  <div id="loc-btn" onclick="goUser()">📍</div>
+  <script>
+    var RISK_FILL = {
+      danger: '#C13A2D', caution: '#D9622F', info: '#4A7FBF', safe: '#2D8A4E',
+      unknown: '#8A8A8A', closed: '#555555', tempClosed: '#B07A1A',
+      safeVerified: '#2D8A4E', infoVerified: '#4A7FBF', nearby: '#F5A623',
+    };
+    var CLUSTER_GRID_PX = 80;     // 클러스터 셀 크기(화면 px 기준)
+    var CLUSTER_MAX_ZOOM = 17;    // 이 줌부터는 개별 마커
+    var map = null, items = [], singles = [], shownSingles = [], clusterMks = [];
+    var selectedIdx = -1, userMk = null, userPos = null, ready = false;
 
-    var map = new naver.maps.Map('map', {
-      center: new naver.maps.LatLng(${centerLat}, ${centerLng}),
-      zoom: 12,
-      zoomControl: true,
-      zoomControlOptions: {
-        style: naver.maps.ZoomControlStyle.SMALL,
-        position: naver.maps.Position.TOP_LEFT,
-      },
-      scaleControl: false,
-      mapDataControl: false,
-    });
+    function init() {
+      if (map) return;
+      if (typeof naver === 'undefined' || !naver.maps) { sendMsg({ type: 'error', reason: 'sdk' }); return; }
+      map = new naver.maps.Map('map', {
+        center: new naver.maps.LatLng(37.5665, 126.9780),
+        zoom: 12,
+        zoomControl: true,
+        zoomControlOptions: { style: naver.maps.ZoomControlStyle.SMALL, position: naver.maps.Position.TOP_LEFT },
+        scaleControl: false,
+        mapDataControl: false,
+      });
+      naver.maps.Event.addListener(map, 'click', function() { setSelected(-1); sendMsg({ type: 'clearSheet' }); });
+      naver.maps.Event.addListener(map, 'idle', render);
+      ready = true;
+      sendMsg({ type: 'ready' });
+    }
+    window.addEventListener('load', init);
+    // SDK 가 끝내 안 올라오면 RN 쪽에서 안내를 띄운다
+    setTimeout(function() { if (!ready) sendMsg({ type: 'error', reason: 'timeout' }); }, 15000);
 
-    var selectedMk = null;
-    var allMk = [];
-    var mkData = ${markersJSON};
+    function dotEl(idx) {
+      var el = singles[idx] && singles[idx].getElement();
+      return el ? el.querySelector('.mk-dot') : null;
+    }
+    function setSelected(idx) {
+      var prev = dotEl(selectedIdx);
+      if (prev) prev.classList.remove('selected');
+      selectedIdx = idx;
+      var cur = dotEl(idx);
+      if (cur) cur.classList.add('selected');
+    }
 
-    naver.maps.Event.addListener(map, 'click', function() {
-      if (selectedMk) {
-        var el = selectedMk.getElement();
-        if (el) { var dot = el.querySelector('.mk-dot'); if (dot) dot.classList.remove('selected'); }
-        selectedMk = null;
-      }
-      sendMsg({ type: 'clearSheet' });
-    });
-
-    mkData.forEach(function(m, i) {
+    function getSingle(idx) {
+      if (singles[idx]) return singles[idx];
+      var m = items[idx];
       var fill = RISK_FILL[m.risk] || RISK_FILL.info;
-      var iconContent = m.isUserReport
-        ? '<div class="mk-dot mk-user" style="width:22px;height:22px;background:' + fill + ';border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:22px;text-align:center;">✍</div>'
+      var user = !!m.isUserReport;
+      var content = user
+        ? '<div class="mk-dot" style="width:22px;height:22px;background:' + fill + ';border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:22px;text-align:center;">✍</div>'
         : '<div class="mk-dot" style="width:18px;height:18px;background:' + fill + '"></div>';
-      var iconSize = m.isUserReport ? new naver.maps.Size(22, 22) : new naver.maps.Size(18, 18);
-      var iconAnchor = m.isUserReport ? new naver.maps.Point(11, 11) : new naver.maps.Point(9, 9);
-
-      var marker = new naver.maps.Marker({
+      var sz = user ? 22 : 18;
+      var mk = new naver.maps.Marker({
         position: new naver.maps.LatLng(m.lat, m.lng),
         map: null,
-        icon: {
-          content: iconContent,
-          size: iconSize,
-          anchor: iconAnchor,
-        },
+        icon: { content: content, size: new naver.maps.Size(sz, sz), anchor: new naver.maps.Point(sz / 2, sz / 2) },
       });
-
-      naver.maps.Event.addListener(marker, 'click', function() {
-        if (selectedMk && selectedMk !== marker) {
-          var prevEl = selectedMk.getElement();
-          if (prevEl) { var prevDot = prevEl.querySelector('.mk-dot'); if (prevDot) prevDot.classList.remove('selected'); }
-        }
-        var el = marker.getElement();
-        if (el) { var dot = el.querySelector('.mk-dot'); if (dot) dot.classList.add('selected'); }
-        selectedMk = marker;
+      naver.maps.Event.addListener(mk, 'click', function() {
+        setSelected(idx);
         sendMsg({ type: 'markerTap', data: { label: m.label, address: m.address, detail: m.detail, risk: m.risk, lat: m.lat, lng: m.lng } });
       });
-
-      allMk.push(marker);
-    });
-
-    function clusterIcon(sz, bg) {
-      return {
-        content: '<div class="cluster-mk" style="width:' + sz + 'px;height:' + sz + 'px;font-size:' + (sz < 44 ? 12 : 14) + 'px;background:' + bg + '"></div>',
-        size: new naver.maps.Size(sz, sz),
-        anchor: new naver.maps.Point(sz / 2, sz / 2),
-      };
+      singles[idx] = mk;
+      return mk;
     }
-    new MarkerClustering({
-      minClusterSize: 2,
-      maxZoom: 17,
-      map: map,
-      markers: allMk,
-      disableClickZoom: false,
-      gridSize: 90,
-      icons: [clusterIcon(36, '#C13A2D'), clusterIcon(44, '#D9622F'), clusterIcon(52, '#E8704A')],
-      indexGenerator: [10, 30, 100],
-      stylingFunction: function(clusterMarker, count) {
-        var el = clusterMarker.getElement();
-        if (el) {
-          var div = el.querySelector('.cluster-mk');
-          if (div) div.textContent = count;
+
+    function clusterMarker(lat, lng, count) {
+      var sz = count < 10 ? 36 : (count < 30 ? 44 : 52);
+      var bg = count < 10 ? '#C13A2D' : (count < 30 ? '#D9622F' : '#E8704A');
+      var mk = new naver.maps.Marker({
+        position: new naver.maps.LatLng(lat, lng),
+        map: map,
+        icon: {
+          content: '<div class="cluster-mk" style="width:' + sz + 'px;height:' + sz + 'px;font-size:' + (sz < 44 ? 12 : 14) + 'px;background:' + bg + '">' + count + '</div>',
+          size: new naver.maps.Size(sz, sz),
+          anchor: new naver.maps.Point(sz / 2, sz / 2),
+        },
+      });
+      naver.maps.Event.addListener(mk, 'click', function() {
+        map.morph(new naver.maps.LatLng(lat, lng), Math.min(map.getZoom() + 2, 19));
+      });
+      return mk;
+    }
+
+    function render() {
+      if (!map) return;
+      var z = map.getZoom();
+      var b = map.getBounds();
+      var sw = b.getSW(), ne = b.getNE();
+      var padLat = (ne.lat() - sw.lat()) * 0.25, padLng = (ne.lng() - sw.lng()) * 0.25;
+      var minLat = sw.lat() - padLat, maxLat = ne.lat() + padLat;
+      var minLng = sw.lng() - padLng, maxLng = ne.lng() + padLng;
+
+      shownSingles.forEach(function(i) { if (singles[i]) singles[i].setMap(null); });
+      shownSingles = [];
+      clusterMks.forEach(function(c) { c.setMap(null); });
+      clusterMks = [];
+
+      var cell = 360 / Math.pow(2, z) * (CLUSTER_GRID_PX / 256);
+      var groups = {};
+      for (var i = 0; i < items.length; i++) {
+        var m = items[i];
+        if (m.lat < minLat || m.lat > maxLat || m.lng < minLng || m.lng > maxLng) continue;
+        var key = z >= CLUSTER_MAX_ZOOM ? ('s' + i) : (Math.floor(m.lng / cell) + '_' + Math.floor(m.lat / cell));
+        (groups[key] = groups[key] || []).push(i);
+      }
+      Object.keys(groups).forEach(function(k) {
+        var g = groups[k];
+        if (g.length < 2) {
+          getSingle(g[0]).setMap(map);
+          shownSingles.push(g[0]);
+        } else {
+          var la = 0, lo = 0;
+          g.forEach(function(i) { la += items[i].lat; lo += items[i].lng; });
+          clusterMks.push(clusterMarker(la / g.length, lo / g.length, g.length));
         }
-      },
-    });
-
-    ${userMarkerJS}
-
-    if (mkData.length > 0) {
-      try {
-        var bounds = new naver.maps.LatLngBounds();
-        mkData.forEach(function(m) { bounds.extend(new naver.maps.LatLng(m.lat, m.lng)); });
-        map.fitBounds(bounds, { top: 40, right: 40, bottom: 60, left: 40 });
-      } catch(e) {}
+      });
+      if (selectedIdx >= 0) { var d = dotEl(selectedIdx); if (d) d.classList.add('selected'); }
     }
+
+    // RN → WebView
+    window.setMarkers = function(arr) {
+      singles.forEach(function(mk) { if (mk) mk.setMap(null); });
+      singles = []; shownSingles = []; selectedIdx = -1;
+      items = arr || [];
+      render();
+    };
+    window.setUser = function(lat, lng, center) {
+      if (!map) return;
+      userPos = new naver.maps.LatLng(lat, lng);
+      if (userMk) userMk.setPosition(userPos);
+      else userMk = new naver.maps.Marker({
+        position: userPos, map: map, zIndex: 1000,
+        icon: {
+          content: '<div style="width:18px;height:18px;border-radius:50%;background:#4A7FBF;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>',
+          size: new naver.maps.Size(18, 18), anchor: new naver.maps.Point(9, 9),
+        },
+      });
+      document.getElementById('loc-btn').style.display = 'flex';
+      if (center) { map.setCenter(userPos); map.setZoom(15); }
+    };
+    window.goUser = function() { if (map && userPos) { map.setCenter(userPos); map.setZoom(16); } };
   </script>
 </body>
 </html>`;
@@ -654,7 +669,10 @@ const BRAND_STORE_PINS = false;
 export default function MapScreen({ lang, t, user }) {
   const [location, setLocation] = useState(null);
   const [locErr, setLocErr] = useState(false);
-  const [mapReady, setMapReady] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState(null);
+  const [mapDiag, setMapDiag] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const [reviews, setReviews] = useState(REVIEWS);
   const [mapReports, setMapReports] = useState([]);
   const [brands, setBrands] = useState(LOCAL_BRANDS);
@@ -669,6 +687,9 @@ export default function MapScreen({ lang, t, user }) {
   const sheetAnim = useRef(new Animated.Value(0)).current;
   const webviewRef = useRef(null);
   const brandIdsRef = useRef('');
+  const centeredRef = useRef(false);
+  const nearbyAtRef = useRef(null);
+  const mapHtml = useMemo(() => buildMapHTML(NAVER_MAPS_CLIENT_ID), []);
 
   function showSheet(data) {
     setSheetData(data);
@@ -691,27 +712,38 @@ export default function MapScreen({ lang, t, user }) {
         showSheet(msg.data);
       } else if (msg.type === 'clearSheet') {
         hideSheet();
+      } else if (msg.type === 'ready') {
+        setMapError(null);
+        setMapLoaded(true);
+      } else if (msg.type === 'diag') {
+        setMapDiag(d => (d ? d + '\n' : '') + msg.text);
+      } else if (msg.type === 'error') {
+        setMapError(msg.reason || 'unknown');
       }
     } catch {}
   }
 
-  // 위치 권한 + 현재 위치
+  // 위치 권한 + 현재 위치 — 지도는 위치를 기다리지 않고 먼저 뜬다.
+  // 마지막으로 알려진 위치로 먼저 이동하고, 최신 위치가 오면 갱신한다.
   useEffect(() => {
+    let alive = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
-          setLocation(loc.coords);
-        } else {
-          setLocErr(true);
-        }
+        if (status !== 'granted') { if (alive) setLocErr(true); return; }
+        const last = await Location.getLastKnownPositionAsync().catch(() => null);
+        if (alive && last) setLocation(last.coords);
+        const cur = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise(resolve => setTimeout(() => resolve(null), 8000)),
+        ]);
+        if (alive && cur) setLocation(cur.coords);
+        else if (alive && !last) setLocErr(true);
       } catch {
-        setLocErr(true);
-      } finally {
-        setMapReady(true);
+        if (alive) setLocErr(true);
       }
     })();
+    return () => { alive = false; };
   }, []);
 
   // Firebase 리뷰 + 사용자 기록 + 브랜드 실시간 구독
@@ -731,6 +763,9 @@ export default function MapScreen({ lang, t, user }) {
   // 근처 고평점 식당 (구글 Places Nearby)
   useEffect(() => {
     if (!location) return;
+    const prev = nearbyAtRef.current;
+    if (prev && Math.abs(prev.lat - location.latitude) < 0.005 && Math.abs(prev.lng - location.longitude) < 0.005) return;
+    nearbyAtRef.current = { lat: location.latitude, lng: location.longitude };
     fetchNearbyHighRated(location.latitude, location.longitude).then(results => {
       setNearbyMarkers(results.map(p => ({
         lat: p.lat,
@@ -745,7 +780,7 @@ export default function MapScreen({ lang, t, user }) {
 
   // 네이버 API로 브랜드 매장 위치 조회 (전국) — brands 목록이 실제로 바뀔 때만 재조회
   useEffect(() => {
-    if (!BRAND_STORE_PINS || !mapReady) return;   // 네이버 검색 API 키 문제로 현재 꺼 둠 (요청 실패만 반복됨). 대안이 정해지면 true
+    if (!BRAND_STORE_PINS) return;   // 네이버 검색 API 키 문제로 현재 꺼 둠 (요청 실패만 반복됨). 대안이 정해지면 true
     const newIds = brands.map(b => b.id).sort().join(',');
     if (newIds === brandIdsRef.current) return;
     brandIdsRef.current = newIds;
@@ -770,15 +805,7 @@ export default function MapScreen({ lang, t, user }) {
       setBrandMarkers(results.flat());
       setLoadingBrands(false);
     });
-  }, [mapReady, brands]);
-
-  if (!mapReady) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#E8704A" />
-      </View>
-    );
-  }
+  }, [brands]);
 
   // ── 지도 검색: 앱 DB(식당·브랜드)를 즉시 검색 ──────────────
   const normQ = t => String(t || '').toLowerCase().replace(/[\s·()\-/]+/g, '');
@@ -829,7 +856,37 @@ export default function MapScreen({ lang, t, user }) {
   ];
 
   const filteredMarkers = activeFilter ? allMarkers.filter(m => m.risk === activeFilter || (activeFilter === 'safe' && m.risk === 'safeVerified') || (activeFilter === 'info' && m.risk === 'infoVerified')) : allMarkers;
-  const html = buildMapHTML(filteredMarkers, location?.latitude, location?.longitude);
+
+  // 지도에는 마커 데이터만 주입한다(지도 자체는 다시 로드하지 않음)
+  const markersPayload = JSON.stringify(filteredMarkers.map(m => ({
+    lat: m.lat, lng: m.lng, risk: m.risk || 'info',
+    label: (m.label || '').substring(0, 40),
+    address: (m.address || '').substring(0, 60),
+    detail: (m.detail || '').substring(0, 80),
+    isUserReport: !!m.isUserReport,
+  })));
+  useEffect(() => {
+    if (!mapLoaded) return;
+    webviewRef.current?.injectJavaScript(`try{window.setMarkers(${markersPayload});}catch(e){} true;`);
+  }, [mapLoaded, markersPayload]);
+
+  useEffect(() => {
+    if (!mapLoaded || !location) return;
+    const center = !centeredRef.current;
+    centeredRef.current = true;
+    webviewRef.current?.injectJavaScript(`try{window.setUser(${location.latitude},${location.longitude},${center});}catch(e){} true;`);
+  }, [mapLoaded, location]);
+
+  function reloadMap() {
+    centeredRef.current = false;
+    setMapLoaded(false);
+    setMapError(null);
+    setMapDiag('');
+    setReloadKey(k => k + 1);
+  }
+  const mapErrorText = mapError === 'auth'
+    ? '지도 인증에 실패했어요. 잠시 후 다시 시도해 주세요.'
+    : '지도를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
   const NEARBY_SC = { color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', icon: '⭐' };
   const sheetSC = sheetData
     ? (sheetData.risk === 'nearby' ? NEARBY_SC : (SC[sheetData.risk] || SC.info))
@@ -847,7 +904,8 @@ export default function MapScreen({ lang, t, user }) {
       <View style={{ flex: 1 }}>
         <WebView
           ref={webviewRef}
-          source={{ html, baseUrl: 'http://localhost' }}
+          key={reloadKey}
+          source={{ html: mapHtml, baseUrl: 'https://localhost' }}
           style={styles.map}
           originWhitelist={['*']}
           javaScriptEnabled={true}
@@ -857,8 +915,24 @@ export default function MapScreen({ lang, t, user }) {
           allowUniversalAccessFromFileURLs={true}
           scalesPageToFit={false}
           onMessage={handleWebViewMessage}
-          onError={e => console.log('WebView error:', JSON.stringify(e.nativeEvent))}
+          onError={e => { console.log('WebView error:', JSON.stringify(e.nativeEvent)); setMapError('network'); }}
+          onHttpError={e => console.log('WebView http error:', JSON.stringify(e.nativeEvent))}
         />
+
+        {!mapLoaded && !mapError && (
+          <View style={styles.mapOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="#E8704A" />
+          </View>
+        )}
+        {!!mapError && (
+          <View style={styles.mapOverlay}>
+            <Text style={styles.mapErrText}>{mapErrorText}</Text>
+            {!!mapDiag && <Text style={styles.mapDiagText}>{mapDiag.substring(0, 400)}</Text>}
+            <TouchableOpacity style={styles.mapRetryBtn} onPress={reloadMap} activeOpacity={0.8}>
+              <Text style={styles.mapRetryText}>다시 시도</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* 검색창 (플로팅) */}
         <View style={styles.searchWrap} pointerEvents="box-none">
@@ -999,6 +1073,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  mapOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F5', paddingHorizontal: 32 },
+  mapErrText: { fontSize: 14, color: '#555', textAlign: 'center', lineHeight: 21, marginBottom: 14 },
+  mapDiagText: { fontSize: 11, color: '#999', textAlign: 'center', marginBottom: 14 },
+  mapRetryBtn: { backgroundColor: '#E8704A', borderRadius: 10, paddingVertical: 11, paddingHorizontal: 22 },
+  mapRetryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFF8E7', borderBottomWidth: 1, borderBottomColor: '#F5C842',

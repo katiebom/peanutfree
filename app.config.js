@@ -8,6 +8,7 @@ module.exports = {
   extra: {
     ...base.expo.extra,
     naverClientId: process.env.NAVER_CLIENT_ID || '',
+    naverMapsClientId: process.env.NAVER_MAPS_CLIENT_ID || '',
     naverClientSecret: process.env.NAVER_CLIENT_SECRET || '',
     googlePlacesKey: process.env.GOOGLE_PLACES_KEY || '',
     eas: base.expo.extra?.eas,
