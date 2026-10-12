@@ -3,8 +3,10 @@
 // 출력: data/verified/<날짜>.json (통과분, apply-reviews.mjs 입력 형식) + <날짜>.report.md (전체 결과, Claude 검토 대상 표시)
 // LLM 토큰을 쓰지 않는다. Firestore 에는 쓰지 않는다.
 import fs from 'fs';
+import { execFile } from 'child_process';
 import path from 'path';
 import { validateItem } from './lib/evidence.mjs';
+import { quoteFound } from './lib/quote-match.mjs';
 import { loadLedger, saveLedger, observe, checkPlan, recordCheck, fingerprint, claudeDecision } from './lib/ledger.mjs';
 
 const file = process.argv[2];
@@ -14,24 +16,31 @@ if (!file) { console.error('사용법: node scripts/check-sources.mjs <candidate
 const { candidates } = JSON.parse(fs.readFileSync(file, 'utf8'));
 const date = path.basename(file).match(/\d{4}-\d{2}-\d{2}/)?.[0] || new Date().toISOString().slice(0, 10);
 
-// 비교용 정규화: 태그·공백·문장부호 제거
-const squash = t => t.toLowerCase().replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]*>/g, ' ')
-  .replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;|&#34;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-  .replace(/[\s·・,.:;!?'"“”‘’…()\[\]{}\-–—~*]+/g, '');
-
+const UA = 'Mozilla/5.0 (PeanutFreeSourceCheck)';
+function decode(buf, contentType = '') {
+  const head = new TextDecoder('latin1').decode(buf.slice(0, 2048));
+  const cs = (contentType.match(/charset=([\w-]+)/i) || head.match(/charset=["']?([\w-]+)/i) || [])[1] || 'utf-8';
+  try { return new TextDecoder(cs).decode(buf); } catch { return new TextDecoder('utf-8').decode(buf); }
+}
+// Node fetch 가 접속 못 하는 사이트(낡은 TLS 설정: DH 키가 짧음 등)는 curl 로 다시 시도한다
+function curlText(url) {
+  return new Promise(resolve => execFile('curl', ['-sSL', '-f', '-m', '15', '-A', UA, '-H', 'Accept-Language: ko', url], { encoding: 'buffer', maxBuffer: 20 * 1024 * 1024 }, (err, stdout, stderr) => {
+    if (err) return resolve({ error: `curl: ${String(stderr || err.message).trim().slice(0, 70)}` });
+    resolve({ text: decode(new Uint8Array(stdout)) });
+  }));
+}
 async function getText(url) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 15000);
   try {
-    const res = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (PeanutFreeSourceCheck)', 'Accept-Language': 'ko' } });
+    const res = await fetch(url, { signal: ctl.signal, redirect: 'follow', headers: { 'User-Agent': UA, 'Accept-Language': 'ko' } });
     if (!res.ok) return { error: `HTTP ${res.status}` };
-    const buf = await res.arrayBuffer();
-    const head = new TextDecoder('latin1').decode(buf.slice(0, 2048));
-    const cs = ((res.headers.get('content-type') || '').match(/charset=([\w-]+)/i) || head.match(/charset=["']?([\w-]+)/i) || [])[1] || 'utf-8';
-    let text;
-    try { text = new TextDecoder(cs).decode(buf); } catch { text = new TextDecoder('utf-8').decode(buf); }
-    return { text };
-  } catch (e) { return { error: e.name === 'AbortError' ? '시간 초과' : String(e.message || e).slice(0, 80) }; }
+    return { text: decode(await res.arrayBuffer(), res.headers.get('content-type') || '') };
+  } catch (e) {
+    if (e.name === 'AbortError') return { error: '시간 초과' };
+    const viaCurl = await curlText(url);
+    return viaCurl.error ? { error: `${String(e.cause?.code || e.message || e).slice(0, 50)} / ${viaCurl.error}` } : viaCurl;
+  }
   finally { clearTimeout(timer); }
 }
 
@@ -58,10 +67,10 @@ for (const c of candidates) {
   }
   const got = await getText(c.sourceUrl);
   if (got.error) { recordCheck(L, c, 'fail-fetch', got.error); rows.push({ ...base, result: 'fail-fetch', reason: got.error, url: c.sourceUrl }); continue; }
-  const found = squash(got.text).includes(squash(c.sourceQuote));
+  const { found, via } = quoteFound(got.text, c.sourceQuote);
   if (found && !RELEVANT.test(c.sourceQuote)) { recordCheck(L, c, 'fail-relevance', '인용문에 땅콩·견과·알레르기 언급이 없음'); rows.push({ ...base, result: 'fail-relevance', reason: '인용문에 땅콩·견과·알레르기 언급이 없음 — 주장과 무관한 문장', url: c.sourceUrl }); continue; }
   recordCheck(L, c, found ? 'pass' : 'fail-quote', found ? '' : '원문 인용이 페이지 본문에 없음');
-  rows.push({ ...base, result: found ? 'pass' : 'fail-quote', reason: found ? '' : '원문 인용이 페이지 본문에 없음 (JS 로 그려지는 페이지면 오탐일 수 있어 사람 확인 필요)', url: c.sourceUrl, cand: c });
+  rows.push({ ...base, result: found ? 'pass' : 'fail-quote', via, reason: found ? '' : '원문 인용이 페이지 본문에 없음 (JS 로 그려지는 페이지면 오탐일 수 있어 사람 확인 필요)', url: c.sourceUrl, cand: c });
   await new Promise(r => setTimeout(r, 400));
 }
 saveLedger(L);
