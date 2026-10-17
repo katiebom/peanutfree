@@ -8,6 +8,7 @@ import {
   Text, TextInput, TouchableOpacity,
   View,
 } from 'react-native';
+import { openLegal } from '../data/legal';
 import { signIn, signUp } from '../firebase/authService';
 
 // ── 탭: 로그인 / 회원가입 ──────────────────────────────────
@@ -52,8 +53,17 @@ export function AuthScreen({ onSuccess, lang, setLang, t }) {
 
         {tab === 'login'
           ? <LoginForm onSuccess={onSuccess} t={t} />
-          : <SignupForm onSuccess={() => setTab('login')} t={t} />
+          : <SignupForm onSuccess={() => setTab('login')} lang={lang} t={t} />
         }
+        <View style={styles.legalFooter}>
+          <TouchableOpacity onPress={() => openLegal('terms', lang)} accessibilityRole="link">
+            <Text style={styles.legalLink}>{t.legalTerms}</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalDot}>·</Text>
+          <TouchableOpacity onPress={() => openLegal('privacy', lang)} accessibilityRole="link">
+            <Text style={styles.legalLink}>{t.legalPrivacy}</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -106,7 +116,7 @@ function LoginForm({ onSuccess, t }) {
 }
 
 // ── 회원가입 폼 ────────────────────────────────────────────
-function SignupForm({ onSuccess, t }) {
+function SignupForm({ onSuccess, lang, t }) {
   const [form, setForm] = useState({ email:'', pw:'', pw2:'', nickname:'' });
   const [loading, setLoading] = useState(false);
 
@@ -173,6 +183,19 @@ function SignupForm({ onSuccess, t }) {
         <Text style={styles.ruleSub}>{t.signupTerms}</Text>
       </View>
 
+      <View style={styles.legalBox}>
+        <Text style={styles.legalNote}>{t.signupLegalNote}</Text>
+        <View style={styles.legalLinks}>
+          <TouchableOpacity onPress={() => openLegal('terms', lang)} accessibilityRole="link">
+            <Text style={styles.legalLink}>{t.legalTerms}</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalDot}>·</Text>
+          <TouchableOpacity onPress={() => openLegal('privacy', lang)} accessibilityRole="link">
+            <Text style={styles.legalLink}>{t.legalPrivacy}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]}
         onPress={handleSignup} disabled={loading}>
         {loading
@@ -185,22 +208,36 @@ function SignupForm({ onSuccess, t }) {
 }
 
 // ── 동의 화면 ──────────────────────────────────────────────
-export function ConsentScreen({ onAccept, t }) {
-  // 모든 항목(의료 면책 고지 포함)이 필수 — 전부 체크해야 버튼 활성화
-  const [checks, setChecks] = useState(() => t.consentItems.map(() => false));
-  const allChecked = checks.length === t.consentItems.length && checks.every(Boolean);
+// 이용약관·개인정보 수집이용은 항목별 필수 동의(전문 링크 포함), 면책 안내는 확인 항목.
+// 알레르기 프로필(민감정보)은 여기서 받지 않고 프로필 저장 시점에 별도로 받는다.
+export function ConsentScreen({ onAccept, lang, t }) {
+  const items = [
+    { text: t.consentTerms, link: 'terms' },
+    { text: t.consentPrivacy, link: 'privacy' },
+    ...t.consentItems.map(text => ({ text, link: null })),
+  ];
+  const [checks, setChecks] = useState(() => items.map(() => false));
+  const allChecked = checks.length === items.length && checks.every(Boolean);
   function toggle(i) { const n=[...checks]; n[i]=!n[i]; setChecks(n); }
   return (
     <ScrollView style={styles.consentBg} contentContainerStyle={styles.consentScroll}>
       <Text style={styles.consentAppName}>🥜  {t.appName}</Text>
       <Text style={styles.consentTitle}>{t.consentTitle}</Text>
-      {t.consentItems.map((txt,i) => (
-        <TouchableOpacity key={i} style={styles.checkRow} onPress={() => toggle(i)} activeOpacity={0.7}>
-          <View style={[styles.checkbox, checks[i] && styles.checkboxChecked]}>
-            {checks[i] && <Text style={styles.checkmark}>✓</Text>}
-          </View>
-          <Text style={styles.checkText}>{txt}</Text>
-        </TouchableOpacity>
+      {items.map((it,i) => (
+        <View key={i} style={styles.checkRow}>
+          <TouchableOpacity style={styles.checkMain} onPress={() => toggle(i)} activeOpacity={0.7}
+            accessibilityRole="checkbox" accessibilityState={{ checked: checks[i] }}>
+            <View style={[styles.checkbox, checks[i] && styles.checkboxChecked]}>
+              {checks[i] && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.checkText}>{it.text}</Text>
+          </TouchableOpacity>
+          {it.link && (
+            <TouchableOpacity onPress={() => openLegal(it.link, lang)} style={styles.viewBtn} accessibilityRole="link">
+              <Text style={styles.viewBtnText}>{t.legalView}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       ))}
       <TouchableOpacity style={[styles.consentBtn, !allChecked && styles.consentBtnDisabled]}
         onPress={onAccept} disabled={!allChecked}>
@@ -265,11 +302,19 @@ const styles = StyleSheet.create({
   consentAppName: { fontSize:22, fontWeight:'900', marginBottom:6 },
   consentTitle: { fontSize:13, color:'#888', marginBottom:24 },
   checkRow: {
-    flexDirection:'row', alignItems:'flex-start', gap:12,
     backgroundColor:'white', borderRadius:12, padding:14,
     marginBottom:10, shadowColor:'#000',
     shadowOffset:{width:0,height:1}, shadowOpacity:0.05, elevation:1,
   },
+  checkMain: { flexDirection:'row', alignItems:'flex-start', gap:12 },
+  viewBtn: { alignSelf:'flex-end', marginTop:6, paddingVertical:4, paddingHorizontal:6 },
+  viewBtnText: { fontSize:12, color:'#2A5A9A', fontWeight:'700', textDecorationLine:'underline' },
+  legalBox: { marginTop:4, alignItems:'center', gap:4 },
+  legalNote: { fontSize:11, color:'#888', textAlign:'center', lineHeight:17 },
+  legalLinks: { flexDirection:'row', alignItems:'center', gap:8 },
+  legalFooter: { flexDirection:'row', alignItems:'center', gap:8, marginTop:28 },
+  legalLink: { fontSize:12, color:'#2A5A9A', textDecorationLine:'underline', paddingVertical:4 },
+  legalDot: { fontSize:12, color:'#BBB' },
   checkbox: {
     width:22, height:22, borderRadius:6, borderWidth:2, borderColor:'#DDD',
     backgroundColor:'white', alignItems:'center', justifyContent:'center',

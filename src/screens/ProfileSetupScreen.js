@@ -4,7 +4,8 @@ import {
   ScrollView, View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, Modal
 } from 'react-native';
-import { updateUserProfile } from '../firebase/dbService';
+import { saveAllergyProfile } from '../firebase/dbService';
+import { SENSITIVE_CONSENT_VERSION, openLegal } from '../data/legal';
 
 // ── Translations ─────────────────────────────────────────────
 
@@ -35,6 +36,11 @@ const STRINGS = {
     modalSaveBtn: '저장하기',
     savingError: '저장 중 오류가 발생했어요. 다시 시도해주세요.',
     error: '오류',
+    sensTitle: '[필수] 민감정보(알레르기 정보) 수집·이용 동의',
+    sensBody: '• 항목: 알레르기 대상, 자녀 이름·나이(입력 시), 알레르기 종류, 심각도, 지역(입력 시)\n• 목적: 알레르기 정보에 맞춘 안전 표시 (광고·마케팅 사용 안 함)\n• 보관: 동의 철회 또는 탈퇴 시까지, 철회 즉시 삭제\n• 동의를 거부해도 프로필 외 기능은 이용할 수 있어요. 마이페이지에서 언제든 철회할 수 있어요.\n• 자녀 정보는 보호자(법정대리인)가 입력해주세요. 실명 대신 별명을 권장해요.',
+    sensCheck: '위 내용을 확인했으며 민감정보 수집·이용에 동의합니다.',
+    sensLink: '개인정보처리방침 보기',
+    sensNeed: '동의하면 저장할 수 있어요',
   },
   en: {
     screenTitle: 'Allergy Profile Setup',
@@ -62,6 +68,11 @@ const STRINGS = {
     modalSaveBtn: 'Save',
     savingError: 'An error occurred while saving. Please try again.',
     error: 'Error',
+    sensTitle: '[Required] Consent to collect sensitive data (allergy information)',
+    sensBody: '• Data: who the allergy applies to, child name/age (if entered), allergy type, severity, region (if entered)\n• Purpose: safety labels matched to your allergy (never used for ads or marketing)\n• Retention: until you withdraw consent or delete your account; deleted immediately on withdrawal\n• You can decline and still use everything except the profile. Withdraw anytime from My Page.\n• Please have a legal guardian enter a child\'s information, ideally using a nickname.',
+    sensCheck: 'I have read the above and consent to the collection and use of sensitive data.',
+    sensLink: 'Read the Privacy Policy',
+    sensNeed: 'Consent to enable saving',
   },
 };
 
@@ -82,8 +93,13 @@ function ProfileForm({ lang, initialData, onSave, onSkip, isModal }) {
   const [severity, setSeverity] = useState(initialData?.severity || 'severe');
   const [region, setRegion] = useState(initialData?.region || '');
   const [saving, setSaving] = useState(false);
+  // 같은 버전으로 이미 동의했다면 체크된 상태로 시작한다 (이전 버전·미동의 기존 사용자는 다시 받는다)
+  const [sensConsent, setSensConsent] = useState(
+    initialData?.sensitiveConsent?.version === SENSITIVE_CONSENT_VERSION
+  );
 
   async function handleSave() {
+    if (!sensConsent) return;
     setSaving(true);
     try {
       await onSave({ allergyTarget, childName, childAge, allergyType, severity, region });
@@ -211,11 +227,32 @@ function ProfileForm({ lang, initialData, onSave, onSkip, isModal }) {
         />
       </View>
 
+      {/* 민감정보 별도 동의 */}
+      <View style={styles.sensBox}>
+        <Text style={styles.sensTitle}>{s.sensTitle}</Text>
+        <Text style={styles.sensBody}>{s.sensBody}</Text>
+        <TouchableOpacity onPress={() => openLegal('privacy', lang)} accessibilityRole="link">
+          <Text style={styles.sensLink}>{s.sensLink}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.sensCheckRow}
+          onPress={() => setSensConsent(v => !v)}
+          activeOpacity={0.7}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: sensConsent }}
+        >
+          <View style={[styles.sensCheckbox, sensConsent && styles.sensCheckboxOn]}>
+            {sensConsent && <Text style={styles.sensCheckmark}>✓</Text>}
+          </View>
+          <Text style={styles.sensCheckText}>{s.sensCheck}</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Buttons */}
       <TouchableOpacity
-        style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+        style={[styles.saveBtn, (saving || !sensConsent) && styles.saveBtnDisabled]}
         onPress={handleSave}
-        disabled={saving}
+        disabled={saving || !sensConsent}
         activeOpacity={0.85}
       >
         {saving
@@ -223,6 +260,7 @@ function ProfileForm({ lang, initialData, onSave, onSkip, isModal }) {
           : <Text style={styles.saveBtnText}>{isModal ? s.modalSaveBtn : s.saveBtn}</Text>
         }
       </TouchableOpacity>
+      {!sensConsent && <Text style={styles.sensNeed}>{s.sensNeed}</Text>}
 
       {!isModal && onSkip && (
         <TouchableOpacity style={styles.skipBtn} onPress={onSkip} activeOpacity={0.7}>
@@ -239,7 +277,7 @@ function ProfileForm({ lang, initialData, onSave, onSkip, isModal }) {
 
 export default function ProfileSetupScreen({ user, lang, onDone, onSkip }) {
   async function handleSave(data) {
-    await updateUserProfile(user.uid, { ...data, profileComplete: true });
+    await saveAllergyProfile(user.uid, data, SENSITIVE_CONSENT_VERSION);
     onDone();
   }
 
@@ -262,7 +300,7 @@ export function ProfileEditModal({ visible, user, lang, initialData, onClose, on
   const s = STRINGS[lang] || STRINGS.ko;
 
   async function handleSave(data) {
-    await updateUserProfile(user.uid, { ...data, profileComplete: true });
+    await saveAllergyProfile(user.uid, data, SENSITIVE_CONSENT_VERSION);
     onSaved();
   }
 
@@ -356,6 +394,23 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { color: 'white', fontSize: 16, fontWeight: '900' },
+
+  sensBox: {
+    backgroundColor: '#FFF8E7', borderWidth: 1.5, borderColor: '#F5C842',
+    borderRadius: 12, padding: 14, marginBottom: 14,
+  },
+  sensTitle: { fontSize: 13, fontWeight: '900', color: '#8B6914', marginBottom: 8 },
+  sensBody: { fontSize: 12, color: '#6B5210', lineHeight: 19 },
+  sensLink: { fontSize: 12, color: '#2A5A9A', textDecorationLine: 'underline', marginTop: 8, paddingVertical: 4 },
+  sensCheckRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 10 },
+  sensCheckbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D9B84A',
+    backgroundColor: 'white', alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  sensCheckboxOn: { backgroundColor: '#E8704A', borderColor: '#E8704A' },
+  sensCheckmark: { color: 'white', fontSize: 13, fontWeight: '900' },
+  sensCheckText: { flex: 1, fontSize: 12, color: '#6B5210', lineHeight: 19, fontWeight: '700' },
+  sensNeed: { fontSize: 11, color: '#AAA', textAlign: 'center', marginTop: 8 },
 
   skipBtn: { alignItems: 'center', marginTop: 14, paddingVertical: 8 },
   skipBtnText: { fontSize: 13, color: '#AAA', fontWeight: '600' },

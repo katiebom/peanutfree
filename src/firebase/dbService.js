@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 import {
   collection, doc, getDocs, getDoc,
-  addDoc, updateDoc, deleteDoc,
+  addDoc, updateDoc, deleteDoc, setDoc, deleteField,
   query, where, orderBy, limit, onSnapshot,
   serverTimestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
@@ -425,6 +425,39 @@ export async function deleteUserData(uid) {
 export async function updateUserProfile(uid, data) {
   await updateDoc(doc(db, 'users', uid), {
     ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** 이용약관·개인정보 수집이용 동의 기록 (동의 시점·버전). 실패해도 앱 사용은 막지 않는다. */
+export async function recordConsent(uid, version) {
+  const at = serverTimestamp();
+  await setDoc(doc(db, 'users', uid), {
+    consents: { terms: { version, at }, privacy: { version, at } },
+  }, { merge: true });
+}
+
+/** 알레르기 프로필(민감정보) 저장 + 별도 동의 기록을 한 번에 쓴다. */
+export async function saveAllergyProfile(uid, data, consentVersion) {
+  await updateUserProfile(uid, {
+    ...data,
+    profileComplete: true,
+    sensitiveConsent: { version: consentVersion, at: serverTimestamp() },
+  });
+}
+
+/** 민감정보 동의 철회: 알레르기 프로필 필드를 모두 삭제하고 철회 시점을 남긴다. */
+export async function withdrawSensitiveConsent(uid) {
+  await updateDoc(doc(db, 'users', uid), {
+    allergyTarget: deleteField(),
+    childName: deleteField(),
+    childAge: deleteField(),
+    allergyType: deleteField(),
+    severity: deleteField(),
+    region: deleteField(),
+    sensitiveConsent: deleteField(),
+    profileComplete: false,
+    sensitiveConsentWithdrawnAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 }

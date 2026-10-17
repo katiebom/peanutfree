@@ -7,14 +7,15 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BRANDS, FOODS } from '../data/database';
 import { Badge } from '../components/Common';
-import { getUserProfile } from '../firebase/dbService';
+import { getUserProfile, withdrawSensitiveConsent } from '../firebase/dbService';
+import { SENSITIVE_CONSENT_VERSION, openLegal } from '../data/legal';
 import { deleteAccount, hasRecentLogin, logout, reauthenticate } from '../firebase/authService';
 import { ProfileEditModal } from './ProfileSetupScreen';
 import FeedbackModal from '../components/FeedbackModal';
 
 const STORAGE_KEY = 'peanutfree_favorites';
 // 계정 삭제 시 이 기기에서 지우는 로컬 키
-const LOCAL_KEYS_ON_DELETE = [STORAGE_KEY, 'pf_profileDone', 'pf_consentDone', 'pf_consentDone_v2'];
+const LOCAL_KEYS_ON_DELETE = [STORAGE_KEY, 'pf_profileDone', 'pf_consentDone', 'pf_consentDone_v2', 'pf_consentDone_v3'];
 
 /**
  * onLogout: 로그아웃/계정 삭제 완료 후 App 상태를 초기화하는 콜백 (signOut 은 여기서 수행)
@@ -38,6 +39,27 @@ export default function MyScreen({ lang, t, user, onLogout }) {
       return;
     }
     onLogout();
+  }
+
+  // ── 민감정보(알레르기 프로필) 동의 철회 ─────────────────
+  function confirmWithdrawSensitive() {
+    Alert.alert(t.sensWithdrawTitle, t.sensWithdrawMsg, [
+      { text: t.cancel, style: 'cancel' },
+      {
+        text: t.sensWithdraw, style: 'destructive',
+        onPress: async () => {
+          try {
+            await withdrawSensitiveConsent(user.uid);
+            setProfile(null);
+            await loadProfile();
+            Alert.alert(t.sensWithdrawDone);
+          } catch (e) {
+            if (__DEV__) console.warn('[MyScreen] 동의 철회 실패:', e);
+            Alert.alert(t.error, t.sensWithdrawFail);
+          }
+        },
+      },
+    ]);
   }
 
   // ── 계정 삭제 ─────────────────────────────────────────
@@ -210,6 +232,9 @@ export default function MyScreen({ lang, t, user, onLogout }) {
                     <Text style={styles.profileEditBtnText}>{t.edit}</Text>
                   </TouchableOpacity>
                 </View>
+                {profile && profile.profileComplete && profile.sensitiveConsent?.version !== SENSITIVE_CONSENT_VERSION && (
+                  <Text style={styles.consentNeeded}>{t.sensNeedConsent}</Text>
+                )}
                 {profile && profile.profileComplete ? (
                   <View style={styles.profileChipRow}>
                     {allergyTypeChip() && (
@@ -252,6 +277,11 @@ export default function MyScreen({ lang, t, user, onLogout }) {
                       <Text style={styles.profileSetupBtnText}>{t.setUp}</Text>
                     </TouchableOpacity>
                   </View>
+                )}
+                {profile && profile.profileComplete && (
+                  <TouchableOpacity onPress={confirmWithdrawSensitive} style={styles.withdrawBtn} accessibilityRole="button">
+                    <Text style={styles.withdrawText}>{t.sensWithdraw}</Text>
+                  </TouchableOpacity>
                 )}
               </View>
 
@@ -304,6 +334,15 @@ export default function MyScreen({ lang, t, user, onLogout }) {
             <Text style={styles.feedbackBtnText}>💬  의견 보내기</Text>
             <Text style={styles.feedbackBtnSub}>불편한 점·틀린 정보·바라는 점 무엇이든</Text>
           </TouchableOpacity>
+          <View style={styles.legalRow}>
+            <TouchableOpacity onPress={() => openLegal('terms', lang)} accessibilityRole="link">
+              <Text style={styles.legalLink}>{t.legalTerms}</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalDot}>·</Text>
+            <TouchableOpacity onPress={() => openLegal('privacy', lang)} accessibilityRole="link">
+              <Text style={styles.legalLink}>{t.legalPrivacy}</Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={styles.deleteAccountBtn}
             onPress={confirmDeleteAccount}
@@ -448,6 +487,12 @@ const styles = StyleSheet.create({
   profileEmptyText: { fontSize: 12, color: '#BBB', marginBottom: 8 },
   profileSetupBtn: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#E8704A', borderRadius: 8 },
   profileSetupBtnText: { fontSize: 12, color: 'white', fontWeight: '700' },
+  consentNeeded: { fontSize: 11, color: '#C17C1A', marginBottom: 8, lineHeight: 17 },
+  withdrawBtn: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 4 },
+  withdrawText: { fontSize: 11, color: '#AAA', textDecorationLine: 'underline' },
+  legalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 },
+  legalLink: { fontSize: 12, color: '#2A5A9A', textDecorationLine: 'underline', paddingVertical: 6 },
+  legalDot: { fontSize: 12, color: '#BBB' },
   deleteAccountBtn: { alignSelf: 'center', marginTop: 32, paddingVertical: 10, paddingHorizontal: 16 },
   deleteAccountText: { fontSize: 12, color: '#AAA', textDecorationLine: 'underline' },
   pwOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },

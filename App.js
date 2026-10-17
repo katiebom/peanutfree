@@ -13,7 +13,8 @@ import {
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { T } from './src/data/translations';
 import { onAuthChange } from './src/firebase/authService';
-import { checkIsAdmin } from './src/firebase/dbService';
+import { checkIsAdmin, recordConsent } from './src/firebase/dbService';
+import { CONSENT_VERSION } from './src/data/legal';
 import AdminScreen from './src/screens/AdminScreen';
 import { AuthScreen, ConsentScreen } from './src/screens/AuthScreens';
 import BrandScreen from './src/screens/BrandScreen';
@@ -27,7 +28,9 @@ import RestaurantScreen from './src/screens/RestaurantScreen';
 const TAB_ICONS = ['🏪','🍽️','🍪','🗺️','🥜','📋'];
 
 // 1.0.3: 의료 면책 고지가 필수 동의 항목으로 추가되어 기존 동의를 다시 받는다.
-const CONSENT_KEY = 'pf_consentDone_v2';
+// 1.0.4: 이용약관·개인정보 동의를 항목별로 분리(전문 링크 포함)하고 Firestore 에 동의 기록을 남기므로 재동의.
+// 문서 내용이 바뀌면 CONSENT_VERSION(src/data/legal.js)과 이 키를 함께 올린다.
+const CONSENT_KEY = 'pf_consentDone_v3';
 
 function MainApp({ lang, setLang, user, isAdmin, setScreen, onLogout, t }) {
   const [tabIdx, setTabIdx] = useState(0);
@@ -180,8 +183,13 @@ export default function App() {
       )}
       {screen === 'consent' && (
         <ConsentScreen
-          onAccept={() => { setConsentDone(true); AsyncStorage.setItem(CONSENT_KEY, 'true').catch(() => {}); setScreen(profileDone ? 'app' : 'profile'); }}
-          t={t}
+          onAccept={() => {
+            setConsentDone(true);
+            AsyncStorage.setItem(CONSENT_KEY, 'true').catch(() => {});
+            if (user?.uid) recordConsent(user.uid, CONSENT_VERSION).catch(() => {});
+            setScreen(profileDone ? 'app' : 'profile');
+          }}
+          lang={lang} t={t}
         />
       )}
       {screen === 'profile' && (
