@@ -90,6 +90,19 @@ const FOOD_EXPERIENCES = [
   },
 ];
 
+// 식품 후기용 선택형 필드 (모두 선택 입력 — 줄글을 강요하지 않는다)
+const FACILITY_OPTS = [
+  { key: 'yes',     label: '있음' },
+  { key: 'no',      label: '없음' },
+  { key: 'unclear', label: '모호함' },
+];
+const REACTION_OPTS = [
+  { key: 'none',      label: '이상 없음' },
+  { key: 'mild_itch', label: '경미한 가려움' },
+  { key: 'avoid',     label: '접촉 회피 권장' },
+];
+const RATING_OPTS = [1, 2, 3, 4, 5];
+
 // 충돌 그룹: 안심 계열 ↔ 위험 계열은 동시 선택 불가
 const CONFLICT_SAFE   = ['all_safe'];
 const CONFLICT_DANGER = ['some_danger', 'cross_risk'];
@@ -105,11 +118,42 @@ function isValidCoord(v) {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
+const REPORT_DISCLAIMER = 'ⓘ 후기는 개인 경험에 기반한 참고 자료입니다. 체질에 따라 교차반응이 다를 수 있고, 제조사 리뉴얼에 따라 성분이 달라질 수 있어요. 작성하신 내용에 대한 부담은 갖지 않으셔도 돼요.';
+
+// 선택형 한 줄 (다시 누르면 선택 해제)
+function ChoiceRow({ label, options, value, onChange }) {
+  return (
+    <View style={s.choiceBlock}>
+      <Text style={s.choiceLabel}>{label}</Text>
+      <View style={s.choiceRow}>
+        {options.map(o => {
+          const active = value === o.key;
+          return (
+            <TouchableOpacity
+              key={String(o.key)}
+              style={[s.choiceBtn, active && s.choiceBtnActive]}
+              onPress={() => onChange(active ? null : o.key)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[s.choiceText, active && s.choiceTextActive]}>{o.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function ReportModal({ visible, onClose, target, user }) {
   // target: { type: 'brand'|'food'|'restaurant', id, name, img, lat?, lng? }
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [menuItem, setMenuItem] = useState('');
   const [note, setNote] = useState('');
+  const [facilityNotice, setFacilityNotice] = useState(null);
+  const [reactionAfter, setReactionAfter] = useState(null);
+  const [tasteRating, setTasteRating] = useState(null);
   const [locationMode, setLocationMode] = useState('none'); // 'none' | 'gps' | 'search'
   const [addressQuery, setAddressQuery] = useState('');
   const [addressResults, setAddressResults] = useState([]);
@@ -144,6 +188,7 @@ export default function ReportModal({ visible, onClose, target, user }) {
 
   function reset() {
     setSelectedTypes([]); setMenuItem(''); setNote('');
+    setFacilityNotice(null); setReactionAfter(null); setTasteRating(null);
     setLocationMode('none'); setAddressQuery(''); setAddressResults([]);
     setAddressSearching(false); setSelectedAddress(null);
   }
@@ -233,6 +278,7 @@ export default function ReportModal({ visible, onClose, target, user }) {
         lng,
         userId: user.uid,
         userNickname: user.displayName || '익명',
+        ...(target.type === 'food' ? { facilityNotice, reactionAfter, tasteRating } : {}),
       });
       Alert.alert('기록 완료! 🙏', '소중한 경험을 공유해주셨습니다.\n다른 알레르기 가족에게 큰 도움이 됩니다.');
       reset();
@@ -324,6 +370,21 @@ export default function ReportModal({ visible, onClose, target, user }) {
                 placeholderTextColor="#CCC"
                 style={s.input}
               />
+            </View>
+          )}
+
+          {/* 식품 후기: 선택형 필드 (선택) */}
+          {target?.type === 'food' && (
+            <View style={s.section}>
+              <Text style={s.sectionLabel}>제품 후기 (선택, 눌러서 고르기만 해도 돼요)</Text>
+              <ChoiceRow label="제조시설 혼입 표기" options={FACILITY_OPTS} value={facilityNotice} onChange={setFacilityNotice} />
+              <ChoiceRow label="취식 후 반응" options={REACTION_OPTS} value={reactionAfter} onChange={setReactionAfter} />
+              <ChoiceRow
+                label="일반 제품 대비 맛 만족도 (1~5점)"
+                options={RATING_OPTS.map(n => ({ key: n, label: `${n}점` }))}
+                value={tasteRating} onChange={setTasteRating}
+              />
+              <Text style={s.optionalHint}>취식 후 반응은 건강에 관한 정보라, 쓰고 싶은 경우에만 골라주세요.</Text>
             </View>
           )}
 
@@ -424,6 +485,8 @@ export default function ReportModal({ visible, onClose, target, user }) {
             </View>
           )}
 
+          <Text style={s.disclaimer}>{REPORT_DISCLAIMER}</Text>
+
           {/* 제출 */}
           <TouchableOpacity
             style={[s.submitBtn, isSubmitDisabled && s.submitBtnDisabled]}
@@ -465,6 +528,18 @@ const s = StyleSheet.create({
   targetName: { fontSize: 16, fontWeight: '900', color: '#1A1A1A' },
   targetType: { fontSize: 11, color: '#999', marginTop: 2 },
   section: { marginBottom: 18 },
+  choiceBlock: { marginBottom: 12 },
+  choiceLabel: { fontSize: 12, color: '#666', marginBottom: 6 },
+  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  choiceBtn: {
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20,
+    borderWidth: 1.5, borderColor: '#EEE', backgroundColor: 'white',
+  },
+  choiceBtnActive: { borderColor: '#E8704A', backgroundColor: '#FFF2ED' },
+  choiceText: { fontSize: 13, color: '#666', fontWeight: '600' },
+  choiceTextActive: { color: '#E8704A', fontWeight: '800' },
+  optionalHint: { fontSize: 11, color: '#AAA', marginTop: 2 },
+  disclaimer: { fontSize: 11, color: '#8A7F72', lineHeight: 17, marginBottom: 12 },
   sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', marginBottom: 8 },
   expList: { gap: 8 },
   expCard: {

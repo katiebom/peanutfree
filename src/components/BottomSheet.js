@@ -25,6 +25,18 @@ function AllergyCardButton({ onPress }) {
 }
 
 // ── 공통: 커뮤니티 기록 요약 ─────────────────────────────
+const FACILITY_LABEL = { yes: '혼입 표기 있음', no: '혼입 표기 없음', unclear: '혼입 표기 모호' };
+const REACTION_LABEL = { none: '반응 없음', mild_itch: '경미한 가려움', avoid: '접촉 회피 권장' };
+
+// 식품 후기의 선택형 필드를 한 줄로 요약 (없으면 빈 문자열)
+function reportDetail(r) {
+  const parts = [];
+  if (FACILITY_LABEL[r.facilityNotice]) parts.push(FACILITY_LABEL[r.facilityNotice]);
+  if (REACTION_LABEL[r.reactionAfter]) parts.push(REACTION_LABEL[r.reactionAfter]);
+  if (r.tasteRating >= 1 && r.tasteRating <= 5) parts.push(`맛 ${r.tasteRating}/5`);
+  return parts.join(' · ');
+}
+
 function ReportSummary({ reports }) {
   if (reports.length === 0) return null;
   const counts = { safe: 0, caution: 0, danger: 0, info: 0 };
@@ -43,16 +55,21 @@ function ReportSummary({ reports }) {
           ) : null
         )}
       </View>
-      {reports.slice(0, 2).map(r => (
-        <View key={r.id} style={styles.reportItem}>
-          <View style={[styles.reportDot, { backgroundColor: SC[r.risk]?.color || '#999' }]} />
-          <Text style={styles.reportItemText} numberOfLines={2}>
-            {r.scope === 'specific' && r.menuItem ? `[${r.menuItem}] ` : ''}
-            {r.note || (r.scope === 'all' ? '전체 메뉴 기록' : '기록됨')}
-          </Text>
-          <Text style={styles.reportItemMeta}>{r.userNickname}</Text>
-        </View>
-      ))}
+      {reports.slice(0, 2).map(r => {
+        const detail = reportDetail(r);
+        return (
+          <View key={r.id} style={styles.reportItem}>
+            <View style={[styles.reportDot, { backgroundColor: SC[r.risk]?.color || '#999' }]} />
+            <Text style={styles.reportItemText} numberOfLines={3}>
+              {r.scope === 'specific' && r.menuItem ? `[${r.menuItem}] ` : ''}
+              {r.note || (r.scope === 'all' ? '전체 메뉴 기록' : '기록됨')}
+              {detail ? `\n${detail}` : ''}
+            </Text>
+            <Text style={styles.reportItemMeta}>{r.userNickname}</Text>
+          </View>
+        );
+      })}
+      <Text style={styles.reportDisclaimer}>후기는 개인 경험 기반 참고 자료이며, 체질·제조사 리뉴얼에 따라 다를 수 있어요.</Text>
     </View>
   );
 }
@@ -368,6 +385,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5, borderTopWidth: 1, borderTopColor: '#F0EDE8',
   },
   reportDot: { width: 6, height: 6, borderRadius: 3, marginTop: 5, flexShrink: 0 },
+  reportDisclaimer: { fontSize: 10, color: '#BBB', marginTop: 6, lineHeight: 15 },
   reportItemText: { flex: 1, fontSize: 11, color: '#555', lineHeight: 16 },
   reportItemMeta: { fontSize: 10, color: '#BBB' },
   // 기록 버튼
