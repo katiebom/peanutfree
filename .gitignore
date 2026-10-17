@@ -1,0 +1,12 @@
+node_modules
+_old/
+.expo/
+_backup/
+_research/
+.env
+.env.local
+
+serviceAccountKey.json
+
+# 파이프라인 로컬 상태
+/data/

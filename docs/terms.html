@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이용약관 | 땅콩프리 (PeanutFree)</title>
+  <style>
+    :root {
+      --primary: #E8704A;
+      --bg: #FAF8F5;
+      --card: #ffffff;
+      --border: #F0EDE8;
+      --text: #222222;
+      --sub: #666666;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      font-size: 15px;
+    }
+    header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header .logo { font-size: 28px; }
+    header .title { font-size: 18px; font-weight: 900; color: var(--text); }
+    header .sub { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+    .lang-toggle {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+    }
+    .lang-btn {
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .lang-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .container { max-width: 760px; margin: 0 auto; padding: 32px 24px 80px; }
+
+    .effective-date {
+      background: #FFF3EE;
+      border-left: 3px solid var(--primary);
+      padding: 10px 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 32px;
+    }
+
+    h1 { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
+    .intro { color: var(--sub); font-size: 14px; margin-bottom: 32px; }
+
+    .section {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .section h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section p { margin-bottom: 10px; color: #444; font-size: 14px; }
+    .section p:last-child { margin-bottom: 0; }
+    .section ul { padding-left: 20px; margin-bottom: 10px; }
+    .section ul li { font-size: 14px; color: #444; margin-bottom: 6px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    th {
+      background: #FFF3EE;
+      color: var(--primary);
+      font-weight: 700;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    .contact-card {
+      background: #FFF3EE;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .contact-card strong { display: block; font-weight: 800; margin-bottom: 4px; }
+
+    footer {
+      text-align: center;
+      color: var(--sub);
+      font-size: 12px;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* English section hidden by default */
+    .lang-en { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🥜</span>
+  <div>
+    <div class="title">땅콩프리 (PeanutFree)</div>
+    <div class="sub">이용약관 · Terms of Service</div>
+  </div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('ko')">🇰🇷 한국어</button>
+    <button class="lang-btn" onclick="setLang('en')">🇺🇸 English</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="lang-ko">
+    <div class="effective-date">📅 시행일: 2026년 10월 17일 &nbsp;|&nbsp; 최종 수정: 2026년 10월 17일</div>
+    <h1>이용약관</h1>
+    <p class="intro">땅콩프리 이용 전 아래 내용을 확인해 주세요.</p>
+    <div class="section">
+      <h2>제1조 (목적)</h2>
+      <ul>
+        <li>본 약관은 땅콩프리(이하 "앱")가 제공하는 땅콩·견과류 알레르기 안전 식당·식품 정보 서비스의 이용 조건과 운영자·이용자의 권리와 의무를 정합니다.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>제2조 (서비스의 성격 및 면책)</h2>
+      <ul>
+        <li>앱의 정보는 공식 자료와 이용자 제보를 정리한 <strong>참고용 정보</strong>이며, 의학적 근거나 공식 인증이 아닙니다. 의료적 조언을 대체하지 않습니다.</li>
+        <li>제품 성분과 식당 조리 방식은 예고 없이 바뀔 수 있습니다. 섭취 전 포장지 성분표를 직접 확인하고 매장에 직접 문의해야 합니다.</li>
+        <li>중증 알레르기가 있는 경우 담당 의사의 지침을 따라야 합니다.</li>
+        <li>앱의 안전 등급 표시는 섭취 안전을 보증하지 않으며, 정보 이용에 따른 결과의 책임은 이용자에게 있습니다. 다만 운영자의 고의 또는 중대한 과실로 인한 손해는 관련 법령에 따릅니다.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>제3조 (회원가입 및 계정)</h2>
+      <ul>
+        <li>이용자는 이메일 인증을 완료한 후 서비스를 이용할 수 있습니다.</li>
+        <li>이용자는 계정 정보를 직접 관리해야 하며, 타인에게 양도하거나 대여할 수 없습니다.</li>
+        <li>이용자는 마이페이지에서 언제든 계정을 삭제(탈퇴)할 수 있습니다. 탈퇴 시 본인 데이터는 개인정보처리방침에 따라 삭제됩니다.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>제4조 (이용자의 의무 및 제재)</h2>
+      <ul>
+        <li>허위 제보, 특정 업체에 대한 음해·광고성 글, 타인의 권리를 침해하는 내용을 게시할 수 없습니다.</li>
+        <li>위 행위가 확인되면 해당 게시물은 사전 통지 없이 삭제될 수 있고 계정이 정지될 수 있습니다.</li>
+        <li>신고가 3회 누적된 제보는 자동으로 검토 대기 상태로 전환됩니다.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>제5조 (제보 콘텐츠의 이용)</h2>
+      <ul>
+        <li>이용자가 작성한 제보·후기의 저작권은 이용자에게 있습니다. 이용자는 앱 서비스 운영·개선 목적(앱 내 게시, 검수, 통계 포함)으로 운영자가 해당 내용을 이용하는 것을 허락합니다.</li>
+        <li>제보는 운영자 검수를 거쳐 게시되며, 검수 결과에 따라 수정되거나 게시되지 않을 수 있습니다.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>제6조 (서비스의 변경 및 중단)</h2>
+      <ul>
+        <li>운영자는 서비스 개선, 점검, 운영상 사유로 서비스의 전부 또는 일부를 변경·중단할 수 있으며, 중요한 변경은 앱 내 공지로 안내합니다.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>제7조 (개인정보 보호)</h2>
+      <ul>
+        <li>개인정보와 알레르기 프로필(민감정보)의 처리는 <a href="./privacy-policy.html" style="color:#E8704A">개인정보처리방침</a>을 따릅니다.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>제8조 (준거법 및 문의)</h2>
+      <ul>
+        <li>본 약관은 대한민국 법령에 따라 해석됩니다.</li>
+        <li>문의: alex.k.bom@gmail.com</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="lang-en">
+    <div class="effective-date">📅 Effective Date: October 17, 2026 &nbsp;|&nbsp; Last Updated: October 17, 2026</div>
+    <h1>Terms of Service</h1>
+    <p class="intro">Please read the following before using PeanutFree.</p>
+    <div class="section">
+      <h2>1. Purpose</h2>
+      <ul>
+        <li>These Terms govern use of the PeanutFree app ("the App"), an information service on peanut and tree-nut allergy-safe restaurants and foods.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>2. Nature of the Service and Disclaimer</h2>
+      <ul>
+        <li>Information in the App is <strong>for reference only</strong>, compiled from official sources and user reports. It is not medical evidence or official certification, and does not replace medical advice.</li>
+        <li>Product ingredients and restaurant preparation can change without notice. Always check the package label and ask the venue directly before eating.</li>
+        <li>If you have a severe allergy, follow your physician’s instructions.</li>
+        <li>Safety labels do not guarantee safety. You are responsible for how you use the information; liability for the operator’s willful misconduct or gross negligence is governed by applicable law.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>3. Accounts</h2>
+      <ul>
+        <li>You may use the service after completing email verification.</li>
+        <li>You are responsible for your account credentials and may not transfer or lend your account.</li>
+        <li>You may delete your account at any time from My Page. Your data is then deleted as described in the Privacy Policy.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>4. User Conduct and Enforcement</h2>
+      <ul>
+        <li>Do not post false reports, defamatory or promotional content about a business, or content that infringes others’ rights.</li>
+        <li>Such content may be removed without notice and the account may be suspended.</li>
+        <li>A report that receives 3 flags is automatically put on hold for review.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>5. User Content</h2>
+      <ul>
+        <li>You retain copyright in the reports and reviews you write. You permit the operator to use them to run and improve the App (including in-app display, moderation and statistics).</li>
+        <li>Reports are moderated before publication and may be edited or not published.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>6. Changes to the Service</h2>
+      <ul>
+        <li>The operator may change or suspend all or part of the service for improvement, maintenance or operational reasons; material changes are announced in the App.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>7. Privacy</h2>
+      <ul>
+        <li>Handling of personal data and the allergy profile (sensitive data) follows the <a href="./privacy-policy.html#en" style="color:#E8704A">Privacy Policy</a>.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>8. Governing Law and Contact</h2>
+      <ul>
+        <li>These Terms are governed by the laws of the Republic of Korea.</li>
+        <li>Contact: alex.k.bom@gmail.com</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <footer>
+    © 땅콩프리 (PeanutFree) · <a href="./privacy-policy.html" style="color:#E8704A">개인정보처리방침 / Privacy Policy</a>
+  </footer>
+</div>
+
+<script>
+  function setLang(lang) {
+    document.querySelector('.lang-ko').style.display = lang === 'ko' ? 'block' : 'none';
+    document.querySelector('.lang-en').style.display = lang === 'en' ? 'block' : 'none';
+    document.querySelectorAll('.lang-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.textContent.includes(lang === 'ko' ? '한국어' : 'English'));
+    });
+  }
+  if (location.hash === '#en') setLang('en');
+</script>
+
+</body>
+</html>

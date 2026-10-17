@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:1024px; height:500px; overflow:hidden; }
+  .wrap {
+    width:1024px; height:500px;
+    background: linear-gradient(135deg, #FFF5EE 0%, #FAF0E8 50%, #F5E8DC 100%);
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 0 64px;
+    position:relative;
+    overflow:hidden;
+  }
+  .circle-deco {
+    position:absolute; border-radius:50%; border: 2px solid rgba(232,112,74,0.12);
+  }
+  .c1 { width:500px; height:500px; top:-150px; right:-50px; }
+  .c2 { width:340px; height:340px; top:-80px; right:20px; }
+  .c3 { width:200px; height:200px; bottom:-60px; left:380px; border-color:rgba(232,112,74,0.08); }
+
+  .left { z-index:2; flex:1; }
+  .tag {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#E8704A; color:white;
+    font-size:13px; font-weight:700;
+    padding:6px 16px; border-radius:20px;
+    margin-bottom:22px;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  }
+  .app-name {
+    font-size:58px; font-weight:900; color:#1A1A1A;
+    line-height:1.1; margin-bottom:10px;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  }
+  .app-name .highlight { color:#E8704A; }
+  .app-name .en { font-size:28px; font-weight:700; color:#888; display:block; margin-top:4px; }
+  .sub {
+    font-size:16px; color:#777; line-height:1.6; margin-bottom:28px;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  }
+  .badges { display:flex; gap:8px; flex-wrap:wrap; }
+  .badge {
+    background:white; border:1.5px solid #EDE8E3;
+    border-radius:24px; padding:7px 15px;
+    font-size:12px; color:#555; font-weight:600;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .right {
+    z-index:2;
+    display:flex; flex-direction:column; align-items:center;
+    gap:20px; padding-left:40px;
+  }
+  .char-wrap {
+    position:relative;
+  }
+  .char-wrap img {
+    width:220px; height:220px; object-fit:contain;
+    filter: drop-shadow(0 12px 30px rgba(232,112,74,0.2));
+  }
+  .feature-list { display:flex; flex-direction:column; gap:8px; }
+  .feat {
+    background:white; border-radius:14px;
+    padding:10px 18px; display:flex; align-items:center; gap:10px;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+    min-width:210px;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  }
+  .feat-icon { font-size:17px; }
+  .feat-text { font-size:13px; font-weight:600; color:#333; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="circle-deco c1"></div>
+  <div class="circle-deco c2"></div>
+  <div class="circle-deco c3"></div>
+
+  <div class="left">
+    <div class="tag">🇰🇷 Korea Allergy Safe Guide</div>
+    <div class="app-name">
+      땅콩<span class="highlight">프리</span>
+      <span class="en">PeanutFree</span>
+    </div>
+    <div class="sub">
+      땅콩·견과류 알레르기가 있어도<br/>안심하고 한국 외식 즐기세요!
+    </div>
+    <div class="badges">
+      <div class="badge">🏪 브랜드 안전정보</div>
+      <div class="badge">🍽️ 안심 식당 찾기</div>
+      <div class="badge">🗺️ 주변 지도</div>
+      <div class="badge">🍪 식품 바코드 스캔</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="char-wrap">
+      <img src="./icon-mark.png" />
+    </div>
+    <div class="feature-list">
+      <div class="feat"><span class="feat-icon">✅</span><span class="feat-text">안전한 식당 & 브랜드 정보</span></div>
+      <div class="feat"><span class="feat-icon">📍</span><span class="feat-text">내 주변 안심 맛집 지도</span></div>
+      <div class="feat"><span class="feat-icon">📋</span><span class="feat-text">알레르기 안심 카드</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
