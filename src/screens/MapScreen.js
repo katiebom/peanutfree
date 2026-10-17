@@ -450,8 +450,7 @@ function buildMapHTML(clientId) {
     .mk-dot.selected { transform: scale(1.6); box-shadow:0 4px 12px rgba(0,0,0,0.45); }
     .cluster-mk {
       display:flex; align-items:center; justify-content:center;
-      border-radius:50%; color:white; font-weight:900;
-      border:3px solid rgba(255,255,255,0.9);
+      border-radius:50%; background:#fff; color:#374151; font-weight:900;
       box-shadow:0 3px 10px rgba(0,0,0,0.3);
     }
     #fab {
@@ -554,14 +553,34 @@ function buildMapHTML(clientId) {
       return mk;
     }
 
-    function clusterMarker(lat, lng, count) {
-      var sz = count < 10 ? 36 : (count < 30 ? 44 : 52);
-      var bg = count < 10 ? '#C13A2D' : (count < 30 ? '#D9622F' : '#E8704A');
+    // 클러스터: 흰 원 + 안에 든 식당의 위험도 비율 링 (색은 개별 마커와 같은 RISK_FILL)
+    function clusterRing(sz, idxs) {
+      var tally = {}, order = [];
+      idxs.forEach(function(i) {
+        var c = RISK_FILL[items[i].risk] || RISK_FILL.info;
+        if (!tally[c]) { tally[c] = 0; order.push(c); }
+        tally[c]++;
+      });
+      var sw = 6, r = sz / 2 - sw / 2, C = 2 * Math.PI * r, off = 0, h = '';
+      order.forEach(function(c) {
+        var len = C * tally[c] / idxs.length;
+        h += '<circle cx="' + sz / 2 + '" cy="' + sz / 2 + '" r="' + r + '" fill="none" stroke="' + c +
+             '" stroke-width="' + sw + '" stroke-dasharray="' + len + ' ' + (C - len) +
+             '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 ' + sz / 2 + ' ' + sz / 2 + ')"/>';
+        off += len;
+      });
+      return '<svg width="' + sz + '" height="' + sz + '" style="position:absolute;left:0;top:0">' + h + '</svg>';
+    }
+
+    function clusterMarker(lat, lng, idxs) {
+      var count = idxs.length;
+      var sz = count < 10 ? 40 : (count < 30 ? 48 : 56);
       var mk = new naver.maps.Marker({
         position: new naver.maps.LatLng(lat, lng),
         map: map,
         icon: {
-          content: '<div class="cluster-mk" style="width:' + sz + 'px;height:' + sz + 'px;font-size:' + (sz < 44 ? 12 : 14) + 'px;background:' + bg + '">' + count + '</div>',
+          content: '<div class="cluster-mk" style="position:relative;width:' + sz + 'px;height:' + sz + 'px;font-size:' + (sz < 48 ? 12 : 14) + 'px">' +
+                   clusterRing(sz, idxs) + '<span style="position:relative">' + count + '</span></div>',
           size: new naver.maps.Size(sz, sz),
           anchor: new naver.maps.Point(sz / 2, sz / 2),
         },
@@ -602,7 +621,7 @@ function buildMapHTML(clientId) {
         } else {
           var la = 0, lo = 0;
           g.forEach(function(i) { la += items[i].lat; lo += items[i].lng; });
-          clusterMks.push(clusterMarker(la / g.length, lo / g.length, g.length));
+          clusterMks.push(clusterMarker(la / g.length, lo / g.length, g));
         }
       });
       if (selectedIdx >= 0) { var d = dotEl(selectedIdx); if (d) d.classList.add('selected'); }
@@ -796,7 +815,7 @@ export default function MapScreen({ lang, t, user }) {
         risk: 'nearby',
         label: p.name,
         address: p.address,
-        detail: `⭐ ${p.rating}${p.userRatingsTotal ? ` (${p.userRatingsTotal.toLocaleString()}명)` : ''} · Google Maps · 땅콩 정보 없음 — 방문 전 직접 확인하세요`,
+        detail: `Google Maps 일반 평점 ${p.rating}/5 (리뷰 ${(p.userRatingsTotal || 0).toLocaleString()}개) · 땅콩 안전과는 무관한 평점이에요. 땅콩 정보 없음 — 방문 전 직접 확인하세요`,
       })));
     });
   }, [location]);
